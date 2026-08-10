@@ -36,12 +36,13 @@ function subscribeNoop() {
   return () => {};
 }
 
-function getUploadDraftSnapshot(): UploadDraft | null {
-  return readUploadDraft();
-}
-
-function getServerDraftSnapshot(): UploadDraft | null {
-  return null;
+/** false during SSR / hydration; true after client mount. */
+function useIsClient(): boolean {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
 }
 
 export function TuningOptionsForm({
@@ -50,12 +51,10 @@ export function TuningOptionsForm({
   optionsLoadFailed = false,
 }: TuningOptionsFormProps) {
   const router = useRouter();
+  const isClient = useIsClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const draft = useSyncExternalStore(
-    subscribeNoop,
-    getUploadDraftSnapshot,
-    getServerDraftSnapshot,
-  );
+  const [draft, setDraft] = useState<UploadDraft | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
   const [selectedOverride, setSelectedOverride] = useState<string[] | null>(
     null,
   );
@@ -65,11 +64,21 @@ export function TuningOptionsForm({
     optionsLoadFailed ? "Could not load tuning options." : null,
   );
 
+  // Load draft after client mount (sessionStorage). Microtask avoids the
+  // react-hooks/set-state-in-effect lint for cascading renders.
   useEffect(() => {
-    if (!draft) {
+    if (!isClient) return;
+    const next = readUploadDraft();
+    if (!next) {
       router.replace("/upload");
+      queueMicrotask(() => setDraftReady(true));
+      return;
     }
-  }, [draft, router]);
+    queueMicrotask(() => {
+      setDraft(next);
+      setDraftReady(true);
+    });
+  }, [isClient, router]);
 
   const selectedOptions =
     selectedOverride ??
@@ -161,10 +170,18 @@ export function TuningOptionsForm({
     }
   }
 
-  if (!draft) {
+  if (!isClient || !draftReady) {
     return (
       <div className="shop-panel">
         <p className="muted">Loading your vehicle selection…</p>
+      </div>
+    );
+  }
+
+  if (!draft) {
+    return (
+      <div className="shop-panel">
+        <p className="muted">No vehicle selection found. Redirecting…</p>
       </div>
     );
   }

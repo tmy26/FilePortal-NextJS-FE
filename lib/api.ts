@@ -24,6 +24,14 @@ import type {
 } from "@/lib/types/file-history";
 import { withVehicleTypeIdQuery } from "@/lib/vehicles/query";
 
+/** Default API timeout — prevents hung SSR / soft-nav when the BE is unreachable. */
+const API_FETCH_TIMEOUT_MS = 15_000;
+const API_UPLOAD_TIMEOUT_MS = 300_000;
+
+function apiSignal(timeoutMs = API_FETCH_TIMEOUT_MS): AbortSignal {
+  return AbortSignal.timeout(timeoutMs);
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   let body: unknown = null;
   try {
@@ -45,6 +53,7 @@ async function postJson<T>(path: string, data: unknown): Promise<T> {
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(data),
     cache: "no-store",
+    signal: apiSignal(),
   });
 
   return parseJsonResponse<T>(response);
@@ -60,6 +69,7 @@ async function getJson<T>(path: string, accessToken?: string): Promise<T> {
     method: "GET",
     headers,
     cache: "no-store",
+    signal: apiSignal(),
   });
 
   return parseJsonResponse<T>(response);
@@ -162,6 +172,7 @@ export async function getCurrentUser(accessToken: string): Promise<UserRead> {
       Authorization: `Bearer ${accessToken}`,
     },
     cache: "no-store",
+    signal: apiSignal(),
   });
 
   return parseJsonResponse<UserRead>(response);
@@ -176,6 +187,7 @@ export async function logoutUser(accessToken: string): Promise<void> {
       Authorization: `Bearer ${accessToken}`,
     },
     cache: "no-store",
+    signal: apiSignal(),
   });
 
   await parseJsonResponse<{ detail?: string }>(response);
@@ -192,6 +204,7 @@ export async function deleteUser(
       Authorization: `Bearer ${accessToken}`,
     },
     cache: "no-store",
+    signal: apiSignal(),
   });
 
   return parseJsonResponse<{ detail: string }>(response);
@@ -212,6 +225,7 @@ export async function proxyFileUpload(
     },
     body,
     cache: "no-store",
+    signal: apiSignal(API_UPLOAD_TIMEOUT_MS),
     // Required by Node/undici when the request body is a stream.
     duplex: "half",
   } as RequestInit);
@@ -267,6 +281,7 @@ export async function proxyTransferCreate(
     },
     body,
     cache: "no-store",
+    signal: apiSignal(API_UPLOAD_TIMEOUT_MS),
     duplex: "half",
   } as RequestInit);
 }
@@ -292,6 +307,7 @@ export async function proxyTransferDownload(
         Authorization: `Bearer ${accessToken}`,
       },
       cache: "no-store",
+      signal: apiSignal(API_UPLOAD_TIMEOUT_MS),
     },
   );
 }
@@ -323,6 +339,7 @@ export async function createCheckoutSession(
       },
       body: JSON.stringify({ quantity }),
       cache: "no-store",
+      signal: apiSignal(),
     },
   );
 
@@ -343,6 +360,7 @@ export async function confirmCheckoutSession(
     },
     body: JSON.stringify({ session_id: sessionId }),
     cache: "no-store",
+    signal: apiSignal(),
   });
 
   return parseJsonResponse<ConfirmCheckoutResponse>(response);
