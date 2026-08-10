@@ -2,14 +2,19 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 #
+# Starts web-blue on host :3000. web-green stays off (Compose profile).
 # Expects the File Portal API (be) on the host at http://localhost:8000
-# (Poetry, or `docker compose up` in the be repo).
+# (Poetry, or local Compose in the be repo).
 #
-# Do not use this file on the production server — set API_BASE_URL in server
-# .env to host.docker.internal (see README).
+# Do not use this file on the production server.
 
 services:
-  web:
+  web-blue:
     environment:
       API_BASE_URL: http://host.docker.internal:8000
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+
+  web-green:
+    profiles: ["green-slot"]

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Shared deploy helpers. Sourced by scripts/deploy.sh — not meant to be run alone.
 #
-# Guards exist so a laptop-style API_BASE_URL never ships to the server:
-# the web container must reach the API via host.docker.internal, not localhost.
+# Guards exist so a laptop-style API_BASE_URL / NEXT_PUBLIC_SITE_URL never ships
+# to production.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEPLOY_DIR="$REPO_ROOT/.deploy"
+ACTIVE_SLOT_FILE="$DEPLOY_DIR/active_slot"
 
 FORBIDDEN_API_HOST_PATTERNS=(
   "://localhost"
@@ -44,17 +46,23 @@ require_api_base_url_for_host() {
   for pattern in "${FORBIDDEN_API_HOST_PATTERNS[@]}"; do
     if [[ "$url" == *"$pattern"* ]]; then
       echo "error: API_BASE_URL must not use '${pattern#://}' from inside Docker on the server." >&2
-      echo "       Use host.docker.internal so the container reaches the host API, e.g.:" >&2
-      echo "       API_BASE_URL=http://host.docker.internal:8000" >&2
+      echo "       Prefer the public API origin, e.g. https://api.example.com" >&2
+      echo "       or host.docker.internal to reach Nginx/API on the Docker host." >&2
       return 1
     fi
   done
 
-  if [[ "$url" != *"host.docker.internal"* ]]; then
-    echo "error: API_BASE_URL must target host.docker.internal on the server." >&2
-    echo "       got: $url" >&2
-    return 1
+  # Accept public https API (recommended with be blue-green) or host.docker.internal.
+  if [[ "$url" == https://* ]]; then
+    return 0
   fi
+  if [[ "$url" == *"host.docker.internal"* ]]; then
+    return 0
+  fi
+
+  echo "error: API_BASE_URL must be https://… or use host.docker.internal on the server." >&2
+  echo "       got: $url" >&2
+  return 1
 }
 
 require_public_site_url() {
@@ -73,4 +81,85 @@ require_public_site_url() {
 
 compose() {
   docker compose -f "$REPO_ROOT/docker-compose.yml" "$@"
+}
+
+slot_service() {
+  local slot="$1"
+  echo "web-${slot}"
+}
+
+slot_port() {
+  case "$1" in
+    blue) echo 3001 ;;
+    green) echo 3002 ;;
+    *)
+      echo "error: unknown slot: $1 (expected blue|green)" >&2
+      return 1
+      ;;
+  esac
+}
+
+other_slot() {
+  case "$1" in
+    blue) echo green ;;
+    green) echo blue ;;
+    *)
+      echo "error: unknown slot: $1 (expected blue|green)" >&2
+      return 1
+      ;;
+  esac
+}
+
+read_active_slot() {
+  if [[ -f "$ACTIVE_SLOT_FILE" ]]; then
+    local slot
+    slot="$(tr -d '[:space:]' <"$ACTIVE_SLOT_FILE")"
+    case "$slot" in
+      blue | green) echo "$slot" ;;
+      *)
+        echo "error: invalid active slot in $ACTIVE_SLOT_FILE: '$slot'" >&2
+        return 1
+        ;;
+    esac
+  else
+    echo blue
+  fi
+}
+
+write_active_slot() {
+  local slot="$1"
+  case "$slot" in
+    blue | green) ;;
+    *)
+      echo "error: cannot write unknown slot: $slot" >&2
+      return 1
+      ;;
+  esac
+  mkdir -p "$DEPLOY_DIR"
+  echo "$slot" >"$ACTIVE_SLOT_FILE"
+}
+
+slot_is_running() {
+  local service
+  service="$(slot_service "$1")"
+  local id
+  id="$(compose ps -q "$service" 2>/dev/null || true)"
+  [[ -n "$id" ]]
+}
+
+wait_for_health() {
+  local url="$1"
+  local attempts="${2:-30}"
+  local i
+  for i in $(seq 1 "$attempts"); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+compose_build() {
+  compose build --build-arg "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}"
 }

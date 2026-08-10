@@ -1,39 +1,49 @@
-# Production / server Compose: Next.js container talks to the API on the Docker host.
+# Production / server Compose: blue-green Next.js slots talk to the API on the Docker host
+# (or via a public API URL — see README).
 #
 # Local development (API on the host at :8000):
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 #
-# Server (API on the same host, reached via host.docker.internal):
-#   docker compose up --build -d
-# See README "Docker".
+# Server — prefer ./scripts/deploy.sh (blue-green + Nginx switch):
+#   ./scripts/deploy.sh
+# See README "Blue-green deploy".
 
 x-extra-hosts: &extra-hosts
   - "host.docker.internal:host-gateway"
 
+x-web-common: &web-common
+  build:
+    context: .
+    args:
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+  image: fileportal-web:latest
+  restart: unless-stopped
+  env_file: .env
+  extra_hosts: *extra-hosts
+  environment:
+    NODE_ENV: production
+    PORT: "3000"
+    HOSTNAME: 0.0.0.0
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+      ]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 20s
+
 services:
-  web:
-    build:
-      context: .
-      args:
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
-    restart: unless-stopped
-    env_file: .env
-    extra_hosts: *extra-hosts
+  web-blue:
+    <<: *web-common
     ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:3000/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      - "3001:3000"
+
+  web-green:
+    <<: *web-common
+    ports:
+      - "3002:3000"
