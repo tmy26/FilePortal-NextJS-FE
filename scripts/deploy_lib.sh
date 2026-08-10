@@ -91,7 +91,8 @@ require_public_site_url() {
     echo "       Use the public https origin on the server." >&2
     return 1
   fi
-  if [[ "$url" == *"ТВОЯ"* || "$url" == *"YOUR_"* || "$url" == *"your-"* || "$url" == *"example.com"* ]]; then
+  # Catch unfinished template values from docs (Cyrillic “ТВОЯ…”, YOUR_VPS_IP, etc.).
+  if [[ "$url" == *"ТВОЯ"* || "$url" == *"YOUR_"* ]]; then
     echo "error: NEXT_PUBLIC_SITE_URL still looks like a placeholder: $url" >&2
     echo "       Replace it with your real VPS IP or domain, e.g.:" >&2
     echo "         NEXT_PUBLIC_SITE_URL=http://203.0.113.10:3001" >&2
