@@ -1,0 +1,15 @@
+# Local override: point the portal at the API running on the Docker host.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#
+# Expects the File Portal API (be) on the host at http://localhost:8000
+# (Poetry, or `docker compose up` in the be repo).
+#
+# Do not use this file on the production server — set API_BASE_URL in server
+# .env to host.docker.internal (see README).
+
+services:
+  web:
+    environment:
+      API_BASE_URL: http://host.docker.internal:8000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000

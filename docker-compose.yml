@@ -1,0 +1,39 @@
+# Production / server Compose: Next.js container talks to the API on the Docker host.
+#
+# Local development (API on the host at :8000):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#
+# Server (API on the same host, reached via host.docker.internal):
+#   docker compose up --build -d
+# See README "Docker".
+
+x-extra-hosts: &extra-hosts
+  - "host.docker.internal:host-gateway"
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    restart: unless-stopped
+    env_file: .env
+    extra_hosts: *extra-hosts
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

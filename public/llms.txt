@@ -1,0 +1,35 @@
+# File Portal (TMY Tuned)
+
+> Official file portal for ECU and gearbox tuning file requests by TMY Tuned.
+
+## Identity
+- Product name: File Portal
+- Brand: TMY Tuned (TMYTuned)
+- Contact: tmytuned@gmail.com
+- Location: Plovdiv / Пловдив, Bulgaria
+- Primary language: English (en)
+
+## What File Portal is
+File Portal is an account-based web app where customers upload ECU or gearbox files, purchase TuningPoints, track file request history, and transfer mods between files. It is operated by TMY Tuned.
+
+## Important public pages
+- Home: /
+- Terms of Service: /terms
+- Privacy Policy: /privacy
+- Cookie Policy: /cookies
+
+## Account features (sign-in required; not for indexing)
+- Upload / new file request
+- Shop (TuningPoints)
+- File history
+- Mod transfer
+- Profile
+
+## Keywords
+- File Portal
+- TMY Tuned
+- ECU files
+- gearbox files
+- chip tuning files
+- TuningPoints
+- ECU remap files
