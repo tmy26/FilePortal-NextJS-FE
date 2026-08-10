@@ -36,11 +36,25 @@ load_dotenv() {
 }
 
 require_api_base_url_for_host() {
-  local url="${API_BASE_URL:-}"
+  # Prefer server-only API_BASE_URL; fall back to NEXT_PUBLIC_API_BASE_URL (app accepts both).
+  local url="${API_BASE_URL:-${NEXT_PUBLIC_API_BASE_URL:-}}"
+
   if [[ -z "$url" ]]; then
     echo "error: API_BASE_URL is unset in the environment / .env" >&2
+    echo "       Expected something like:" >&2
+    echo "         API_BASE_URL=http://host.docker.internal:8001" >&2
+    echo "       Common mistakes:" >&2
+    echo "         NEXT_PUBLICAPI_BASE_URL  ← missing underscore (wrong)" >&2
+    echo "         NEXT_PUBLIC_API_BASE_URL ← works as fallback, but prefer API_BASE_URL" >&2
+    if [[ -n "${NEXT_PUBLICAPI_BASE_URL:-}" ]]; then
+      echo "       Found typo NEXT_PUBLICAPI_BASE_URL=${NEXT_PUBLICAPI_BASE_URL}" >&2
+      echo "       Rename it to API_BASE_URL=..." >&2
+    fi
     return 1
   fi
+
+  # Keep both names in sync for compose / Next runtime.
+  export API_BASE_URL="$url"
 
   local pattern
   for pattern in "${FORBIDDEN_API_HOST_PATTERNS[@]}"; do
@@ -75,6 +89,13 @@ require_public_site_url() {
   if [[ "$url" == *"localhost"* || "$url" == *"127.0.0.1"* ]]; then
     echo "error: NEXT_PUBLIC_SITE_URL looks like a local URL: $url" >&2
     echo "       Use the public https origin on the server." >&2
+    return 1
+  fi
+  if [[ "$url" == *"ТВОЯ"* || "$url" == *"YOUR_"* || "$url" == *"your-"* || "$url" == *"example.com"* ]]; then
+    echo "error: NEXT_PUBLIC_SITE_URL still looks like a placeholder: $url" >&2
+    echo "       Replace it with your real VPS IP or domain, e.g.:" >&2
+    echo "         NEXT_PUBLIC_SITE_URL=http://203.0.113.10:3001" >&2
+    echo "         NEXT_PUBLIC_SITE_URL=https://portal.tmytuned.com" >&2
     return 1
   fi
 }

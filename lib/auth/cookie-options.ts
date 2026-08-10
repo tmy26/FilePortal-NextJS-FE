@@ -3,23 +3,43 @@ import {
   REFRESH_TOKEN_MAX_AGE_SECONDS,
 } from "@/lib/auth/constants";
 
+/**
+ * Secure cookies only work over HTTPS. On plain HTTP (e.g. VPS IP smoke test)
+ * set AUTH_COOKIE_SECURE=false. Production with TLS should leave this unset
+ * (defaults to secure when NODE_ENV=production).
+ */
+function authCookieSecure(): boolean {
+  const override = process.env.AUTH_COOKIE_SECURE;
+  if (override === "true") return true;
+  if (override === "false") return false;
+  return process.env.NODE_ENV === "production";
+}
+
 export const AUTH_COOKIE_BASE = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  get secure() {
+    return authCookieSecure();
+  },
   sameSite: "lax" as const,
   path: "/",
 };
 
 export function accessCookieOptions() {
   return {
-    ...AUTH_COOKIE_BASE,
+    httpOnly: true,
+    secure: authCookieSecure(),
+    sameSite: "lax" as const,
+    path: "/",
     maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
   };
 }
 
 export function refreshCookieOptions() {
   return {
-    ...AUTH_COOKIE_BASE,
+    httpOnly: true,
+    secure: authCookieSecure(),
+    sameSite: "lax" as const,
+    path: "/",
     maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
   };
 }
