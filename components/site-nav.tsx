@@ -17,13 +17,17 @@ export function SiteNav({ user, onOpenSidebar }: SiteNavProps) {
   const menuId = useId();
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoggingOut, startLogout] = useTransition();
   const isSignedIn = Boolean(user?.uuid);
+  const [isOpen, setIsOpen] = useState(false);
+  const [menuScope, setMenuScope] = useState(`${pathname}:${isSignedIn}`);
+  const [isLoggingOut, startLogout] = useTransition();
 
-  useEffect(() => {
-    setIsOpen(false);
-  }, [pathname, isSignedIn]);
+  // Close the account menu when the route or auth state changes (adjust state during render).
+  const nextMenuScope = `${pathname}:${isSignedIn}`;
+  if (menuScope !== nextMenuScope) {
+    setMenuScope(nextMenuScope);
+    if (isOpen) setIsOpen(false);
+  }
 
   useEffect(() => {
     if (!isOpen || isLoggingOut) return;

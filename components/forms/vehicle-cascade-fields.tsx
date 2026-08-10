@@ -19,11 +19,12 @@ type VehicleCascadeFieldsProps = UseVehicleCascadeResult & {
   formId: string;
   /** Reserved for shouldShow* gating when file-kind-specific cascade rules are added. */
   fileKind: FileKind;
+  onVehicleInteract?: () => void;
 };
 
 export function VehicleCascadeFields({
   formId,
-  fileKind: _fileKind,
+  fileKind,
   vehicle,
   vehicleTypes,
   brands,
@@ -40,7 +41,18 @@ export function VehicleCascadeFields({
   handleEngineChange,
   handleEcuChange,
   handleGearboxChange,
+  onVehicleInteract,
 }: VehicleCascadeFieldsProps) {
+  // Reserved for future shouldShow* gating by file kind.
+  void fileKind;
+
+  function wrapChange<T>(handler: (value: T) => void | Promise<void>) {
+    return (value: T) => {
+      onVehicleInteract?.();
+      return handler(value);
+    };
+  }
+
   return (
     <fieldset className="upload-vehicle">
       <legend className="shop-section-title">Vehicle details</legend>
@@ -57,7 +69,7 @@ export function VehicleCascadeFields({
           value={vehicle.vehicleTypeId}
           disabled={loadingField !== null}
           onChange={(next) => {
-            void handleVehicleTypeChange(next);
+            void wrapChange(handleVehicleTypeChange)(next);
           }}
           placeholder="Select vehicle type"
           options={[
@@ -77,7 +89,7 @@ export function VehicleCascadeFields({
             value={vehicle.brandId}
             disabled={loadingField !== null}
             onChange={(next) => {
-              void handleBrandChange(next);
+              void wrapChange(handleBrandChange)(next);
             }}
             placeholder={
               loadingField === "brands" ? "Loading brands…" : "Select brand"
@@ -100,7 +112,7 @@ export function VehicleCascadeFields({
             value={vehicle.modelId}
             disabled={loadingField !== null}
             onChange={(next) => {
-              void handleModelChange(next);
+              void wrapChange(handleModelChange)(next);
             }}
             placeholder={
               loadingField === "models" ? "Loading models…" : "Select model"
@@ -123,7 +135,7 @@ export function VehicleCascadeFields({
             value={vehicle.generationId}
             disabled={loadingField !== null}
             onChange={(next) => {
-              void handleGenerationChange(next);
+              void wrapChange(handleGenerationChange)(next);
             }}
             placeholder={
               loadingField === "generations"
@@ -148,7 +160,7 @@ export function VehicleCascadeFields({
             value={vehicle.engineId}
             disabled={loadingField !== null}
             onChange={(next) => {
-              void handleEngineChange(next);
+              void wrapChange(handleEngineChange)(next);
             }}
             placeholder={
               loadingField === "engines"
@@ -173,7 +185,7 @@ export function VehicleCascadeFields({
             value={vehicle.ecuId}
             disabled={loadingField !== null}
             onChange={(next) => {
-              void handleEcuChange(next);
+              void wrapChange(handleEcuChange)(next);
             }}
             placeholder={
               loadingField === "ecus" ? "Loading ECUs…" : "Select ECU"
@@ -196,7 +208,9 @@ export function VehicleCascadeFields({
             value={vehicle.gearbox}
             disabled={loadingField !== null}
             searchable={false}
-            onChange={(next) => handleGearboxChange(next as Gearbox | "")}
+            onChange={(next) =>
+              wrapChange(handleGearboxChange)(next as Gearbox | "")
+            }
             placeholder={
               loadingField === "gearboxes"
                 ? "Loading gearboxes…"

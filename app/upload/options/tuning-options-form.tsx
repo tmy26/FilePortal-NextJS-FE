@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 import { FileDropZone } from "@/components/forms/file-drop-zone";
 import { FormBanner } from "@/components/form-banner";
 import { SummaryList } from "@/components/summary-list";
@@ -26,6 +32,18 @@ type TuningOptionsFormProps = {
   optionsLoadFailed?: boolean;
 };
 
+function subscribeNoop() {
+  return () => {};
+}
+
+function getUploadDraftSnapshot(): UploadDraft | null {
+  return readUploadDraft();
+}
+
+function getServerDraftSnapshot(): UploadDraft | null {
+  return null;
+}
+
 export function TuningOptionsForm({
   currentPoints,
   initialOptions,
@@ -33,10 +51,14 @@ export function TuningOptionsForm({
 }: TuningOptionsFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState<UploadDraft | null>(null);
-  const [ready, setReady] = useState(false);
-  const [options] = useState(initialOptions);
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const draft = useSyncExternalStore(
+    subscribeNoop,
+    getUploadDraftSnapshot,
+    getServerDraftSnapshot,
+  );
+  const [selectedOverride, setSelectedOverride] = useState<string[] | null>(
+    null,
+  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(
@@ -44,21 +66,17 @@ export function TuningOptionsForm({
   );
 
   useEffect(() => {
-    const next = readUploadDraft();
-    if (!next) {
+    if (!draft) {
       router.replace("/upload");
-      return;
     }
-    setDraft(next);
-    if (next.tuningOptionIds?.length) {
-      setSelectedOptions(
-        next.tuningOptionIds.filter((id) =>
-          initialOptions.some((option) => option.uuid === id),
-        ),
-      );
-    }
-    setReady(true);
-  }, [router, initialOptions]);
+  }, [draft, router]);
+
+  const selectedOptions =
+    selectedOverride ??
+    (draft?.tuningOptionIds?.filter((id) =>
+      initialOptions.some((option) => option.uuid === id),
+    ) ??
+      []);
 
   function persistTuningOptions(optionIds: string[]) {
     const current = readUploadDraft();
@@ -70,13 +88,11 @@ export function TuningOptionsForm({
   }
 
   function toggleOption(optionId: string) {
-    setSelectedOptions((prev) => {
-      const next = prev.includes(optionId)
-        ? prev.filter((id) => id !== optionId)
-        : [...prev, optionId];
-      persistTuningOptions(next);
-      return next;
-    });
+    const next = selectedOptions.includes(optionId)
+      ? selectedOptions.filter((id) => id !== optionId)
+      : [...selectedOptions, optionId];
+    setSelectedOverride(next);
+    persistTuningOptions(next);
     setError(null);
   }
 
@@ -84,7 +100,7 @@ export function TuningOptionsForm({
     event.preventDefault();
     if (!draft || !selectedFile || pending) return;
 
-    const pointsNeeded = totalTuningPoints(options, selectedOptions);
+    const pointsNeeded = totalTuningPoints(initialOptions, selectedOptions);
 
     if (selectedOptions.length === 0) {
       setError("Select at least one tuning option.");
@@ -145,7 +161,7 @@ export function TuningOptionsForm({
     }
   }
 
-  if (!ready || !draft) {
+  if (!draft) {
     return (
       <div className="shop-panel">
         <p className="muted">Loading your vehicle selection…</p>
@@ -153,12 +169,12 @@ export function TuningOptionsForm({
     );
   }
 
-  const pointsNeeded = totalTuningPoints(options, selectedOptions);
+  const pointsNeeded = totalTuningPoints(initialOptions, selectedOptions);
   const canSubmit =
     Boolean(selectedFile) &&
     selectedOptions.length > 0 &&
     !pending &&
-    options.length > 0 &&
+    initialOptions.length > 0 &&
     pointsNeeded <= currentPoints;
 
   const summaryRows = [
@@ -191,11 +207,11 @@ export function TuningOptionsForm({
         <p className="shop-section-lead muted">
           Choose one or more options for this upload.
         </p>
-        {options.length === 0 && !optionsLoadFailed ? (
+        {initialOptions.length === 0 && !optionsLoadFailed ? (
           <p className="muted">No tuning options are available yet.</p>
         ) : (
           <div className="upload-tuning-grid">
-            {options.map((option) => {
+            {initialOptions.map((option) => {
               const checked = selectedOptions.includes(option.uuid);
               return (
                 <label
@@ -237,9 +253,7 @@ export function TuningOptionsForm({
       <FileDropZone
         label={selectedFile ? "Change file" : "Browse files"}
         description={
-          selectedFile
-            ? undefined
-            : "Choose a .bin file from your device"
+          selectedFile ? undefined : "Choose a .bin file from your device"
         }
         file={selectedFile}
         inputRef={fileInputRef}

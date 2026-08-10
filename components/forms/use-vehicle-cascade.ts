@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { FileKind } from "@/lib/types/file";
 import {
   EMPTY_VEHICLE_SELECTION,
@@ -16,7 +16,7 @@ import {
   type VehicleSelection,
   type VehicleTypeRead,
 } from "@/lib/types/vehicle";
-import { clearUploadDraft, readUploadDraft } from "@/lib/upload/draft";
+import { clearUploadDraft, readUploadDraft, type UploadDraft } from "@/lib/upload/draft";
 import {
   listBrands,
   listEcusByEngine,
@@ -43,6 +43,19 @@ type UseVehicleCascadeOptions = {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function subscribeNoop() {
+  return () => {};
+}
+
+function readRestoreDraft(restoreDraft: boolean): UploadDraft | null {
+  if (!restoreDraft) return null;
+  return readUploadDraft();
+}
+
+function getServerDraftSnapshot(): UploadDraft | null {
+  return null;
 }
 
 export type UseVehicleCascadeResult = {
@@ -73,6 +86,16 @@ export function useVehicleCascade({
   catalogLoadFailed = false,
   restoreDraft = false,
 }: UseVehicleCascadeOptions): UseVehicleCascadeResult {
+  const draft = useSyncExternalStore(
+    subscribeNoop,
+    () => readRestoreDraft(restoreDraft),
+    getServerDraftSnapshot,
+  );
+  const draftSeed =
+    draft?.vehicle != null
+      ? `${draft.fileKind}:${JSON.stringify(draft.vehicle)}`
+      : null;
+
   const [vehicle, setVehicle] = useState<VehicleSelection>(
     EMPTY_VEHICLE_SELECTION,
   );
@@ -90,6 +113,16 @@ export function useVehicleCascade({
   const [restoredFileKind, setRestoredFileKind] = useState<FileKind | null>(
     null,
   );
+  const [seededDraft, setSeededDraft] = useState<string | null>(null);
+
+  // Seed restored draft during render (React-recommended store sync).
+  if (restoreDraft && draftSeed && draft?.vehicle && seededDraft !== draftSeed) {
+    setSeededDraft(draftSeed);
+    setVehicle(draft.vehicle);
+    if (draft.fileKind === "ecu" || draft.fileKind === "gearbox") {
+      setRestoredFileKind(draft.fileKind);
+    }
+  }
 
   const vehicleReady = isVehicleSelectionComplete(vehicle);
 
@@ -99,19 +132,19 @@ export function useVehicleCascade({
       return;
     }
 
-    const draft = readUploadDraft();
     if (!draft?.vehicle) return;
 
+    const selection = draft.vehicle;
     let cancelled = false;
 
-    async function hydrate(selection: VehicleSelection) {
+    async function hydrate(nextSelection: VehicleSelection) {
       setLoadingField("brands");
       try {
-        const vehicleTypeId = selection.vehicleTypeId;
+        const vehicleTypeId = nextSelection.vehicleTypeId;
         if (!vehicleTypeId) return;
 
         if (isUnknownVehicleValue(vehicleTypeId)) {
-          if (isVehicleCascadeReady(selection)) {
+          if (isVehicleCascadeReady(nextSelection)) {
             const nextGearboxes = await listGearboxes();
             if (!cancelled) setGearboxes(nextGearboxes);
           }
@@ -123,10 +156,10 @@ export function useVehicleCascade({
         setBrands(nextBrands);
 
         if (
-          !selection.brandId ||
-          isUnknownVehicleValue(selection.brandId)
+          !nextSelection.brandId ||
+          isUnknownVehicleValue(nextSelection.brandId)
         ) {
-          if (isVehicleCascadeReady(selection)) {
+          if (isVehicleCascadeReady(nextSelection)) {
             const nextGearboxes = await listGearboxes();
             if (!cancelled) setGearboxes(nextGearboxes);
           }
@@ -134,32 +167,34 @@ export function useVehicleCascade({
         }
 
         const nextModels = await listModelsByBrand(
-          selection.brandId,
+          nextSelection.brandId,
           vehicleTypeId,
         );
         if (cancelled) return;
         setModels(nextModels);
 
         if (
-          !selection.modelId ||
-          isUnknownVehicleValue(selection.modelId)
+          !nextSelection.modelId ||
+          isUnknownVehicleValue(nextSelection.modelId)
         ) {
-          if (isVehicleCascadeReady(selection)) {
+          if (isVehicleCascadeReady(nextSelection)) {
             const nextGearboxes = await listGearboxes();
             if (!cancelled) setGearboxes(nextGearboxes);
           }
           return;
         }
 
-        const nextGenerations = await listGenerationsByModel(selection.modelId);
+        const nextGenerations = await listGenerationsByModel(
+          nextSelection.modelId,
+        );
         if (cancelled) return;
         setGenerations(nextGenerations);
 
         if (
-          !selection.generationId ||
-          isUnknownVehicleValue(selection.generationId)
+          !nextSelection.generationId ||
+          isUnknownVehicleValue(nextSelection.generationId)
         ) {
-          if (isVehicleCascadeReady(selection)) {
+          if (isVehicleCascadeReady(nextSelection)) {
             const nextGearboxes = await listGearboxes();
             if (!cancelled) setGearboxes(nextGearboxes);
           }
@@ -167,27 +202,27 @@ export function useVehicleCascade({
         }
 
         const nextEngines = await listEnginesByGeneration(
-          selection.generationId,
+          nextSelection.generationId,
         );
         if (cancelled) return;
         setEngines(nextEngines);
 
         if (
-          !selection.engineId ||
-          isUnknownVehicleValue(selection.engineId)
+          !nextSelection.engineId ||
+          isUnknownVehicleValue(nextSelection.engineId)
         ) {
-          if (isVehicleCascadeReady(selection)) {
+          if (isVehicleCascadeReady(nextSelection)) {
             const nextGearboxes = await listGearboxes();
             if (!cancelled) setGearboxes(nextGearboxes);
           }
           return;
         }
 
-        const nextEcus = await listEcusByEngine(selection.engineId);
+        const nextEcus = await listEcusByEngine(nextSelection.engineId);
         if (cancelled) return;
         setEcus(nextEcus);
 
-        if (isVehicleCascadeReady(selection)) {
+        if (isVehicleCascadeReady(nextSelection)) {
           const nextGearboxes = await listGearboxes();
           if (!cancelled) setGearboxes(nextGearboxes);
         }
@@ -202,17 +237,12 @@ export function useVehicleCascade({
       }
     }
 
-    // Same timing as the former UploadFileForm effect: set kind + vehicle, then hydrate.
-    if (draft.fileKind === "ecu" || draft.fileKind === "gearbox") {
-      setRestoredFileKind(draft.fileKind);
-    }
-    setVehicle(draft.vehicle);
-    void hydrate(draft.vehicle);
+    void hydrate(selection);
 
     return () => {
       cancelled = true;
     };
-  }, [restoreDraft]);
+  }, [restoreDraft, draftSeed, draft?.vehicle]);
 
   function clearDownstreamLists(
     level: "brand" | "model" | "generation" | "engine" | "ecu",

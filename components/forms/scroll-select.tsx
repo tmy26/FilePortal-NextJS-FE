@@ -110,12 +110,10 @@ export function ScrollSelect({
     };
   }, [isOpen, searchable]);
 
-  useEffect(() => {
-    if (disabled && isOpen) {
-      setIsOpen(false);
-      setQuery("");
-    }
-  }, [disabled, isOpen]);
+  if (disabled && isOpen) {
+    setIsOpen(false);
+    setQuery("");
+  }
 
   function selectOption(next: string) {
     onChange(next);

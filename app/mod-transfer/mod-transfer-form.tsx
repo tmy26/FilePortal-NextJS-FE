@@ -68,18 +68,16 @@ export function ModTransferForm() {
     target: null,
   });
   const [pending, setPending] = useState(false);
-  const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<TransferJobRead | null>(null);
+  const polling = Boolean(job && !isTransferTerminal(job.status));
 
   useEffect(() => {
     if (!job || isTransferTerminal(job.status)) {
-      setPolling(false);
       return;
     }
 
     const jobId = job.uuid;
-    setPolling(true);
     let cancelled = false;
 
     async function poll() {
@@ -96,7 +94,6 @@ export function ModTransferForm() {
           }
           if (!cancelled) {
             setError(readErrorDetail(payload, response.status));
-            setPolling(false);
           }
           return;
         }
@@ -104,13 +101,11 @@ export function ModTransferForm() {
         if (cancelled) return;
         setJob(next);
         if (isTransferTerminal(next.status)) {
-          setPolling(false);
           router.refresh();
         }
       } catch {
         if (!cancelled) {
           setError("Could not check transfer status. Try refreshing.");
-          setPolling(false);
         }
       }
     }
@@ -124,7 +119,7 @@ export function ModTransferForm() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [job?.uuid, job?.status, router]);
+  }, [job, router]);
 
   function inputRefFor(slot: FirmwareSlot) {
     if (slot === "original") return originalInputRef;

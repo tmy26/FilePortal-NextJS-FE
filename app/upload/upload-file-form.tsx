@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import type { FileKind } from "@/lib/types/file";
 import { isVehicleSelectionComplete } from "@/lib/types/vehicle";
 import type { VehicleTypeRead } from "@/lib/types/vehicle";
@@ -46,7 +46,9 @@ export function UploadFileForm({
 }: UploadFileFormProps) {
   const router = useRouter();
   const formId = useId();
-  const [fileKind, setFileKind] = useState<FileKind>("ecu");
+  const [fileKindOverride, setFileKindOverride] = useState<FileKind | null>(
+    null,
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -69,19 +71,15 @@ export function UploadFileForm({
     loadingField,
   } = cascade;
 
-  useEffect(() => {
-    if (restoredFileKind) {
-      setFileKind(restoredFileKind);
-    }
-  }, [restoredFileKind]);
-
-  // Match prior patchVehicle behavior: clear form errors when selection changes.
-  useEffect(() => {
-    setFormError(null);
-  }, [vehicle]);
+  const fileKind = fileKindOverride ?? restoredFileKind ?? "ecu";
 
   const canUpload = currentPoints > 0;
   const canContinue = vehicleReady && !pending && loadingField === null;
+
+  function clearErrorAndSelectKind(kind: FileKind) {
+    setFileKindOverride(kind);
+    setFormError(null);
+  }
 
   function handleContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,6 +93,7 @@ export function UploadFileForm({
     }
 
     setPending(true);
+    setFormError(null);
     try {
       const summary = buildVehicleSummary(vehicle, {
         vehicleTypes: entityNameMap(vehicleTypes),
@@ -153,7 +152,7 @@ export function UploadFileForm({
               key={option.kind}
               className="upload-kind"
               selected={fileKind === option.kind}
-              onSelect={() => setFileKind(option.kind)}
+              onSelect={() => clearErrorAndSelectKind(option.kind)}
             >
               <span className="upload-kind-label">{option.label}</span>
               <span className="upload-kind-desc">{option.description}</span>
@@ -166,6 +165,7 @@ export function UploadFileForm({
         {...cascade}
         formId={formId}
         fileKind={fileKind}
+        onVehicleInteract={() => setFormError(null)}
       />
 
       <button type="submit" className="submit-btn" disabled={!canContinue}>
