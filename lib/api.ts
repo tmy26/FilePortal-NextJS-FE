@@ -72,7 +72,7 @@ async function authorizedFetch(
       signal: apiSignal(timeoutMs),
     });
 
-  let response = await doFetch(accessToken);
+  const response = await doFetch(accessToken);
   if (response.status !== 401) {
     return response;
   }
