@@ -45,6 +45,8 @@ export type LoginRequest = {
 export type AuthTokens = {
   access: string;
   refresh: string;
+  /** Unix seconds (UTC) when the opaque access token expires. */
+  access_expires_at: number;
 };
 
 export type LoginResponse = {

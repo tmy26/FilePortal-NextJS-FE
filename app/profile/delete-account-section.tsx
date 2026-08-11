@@ -5,6 +5,7 @@ import {
   deleteAccountAction,
   type DeleteAccountState,
 } from "@/app/actions/profile";
+import { clearClientSignedIn } from "@/lib/auth/client-session";
 
 const initialState: DeleteAccountState = { ok: false };
 
@@ -35,7 +36,13 @@ export function DeleteAccountSection() {
           Delete account
         </button>
       ) : (
-        <form action={formAction} className="profile-danger-form">
+        <form
+          action={formAction}
+          className="profile-danger-form"
+          onSubmit={() => {
+            clearClientSignedIn();
+          }}
+        >
           {state.error ? (
             <p className="form-banner" role="alert">
               {state.error}

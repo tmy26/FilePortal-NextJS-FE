@@ -1342,6 +1342,28 @@ html.dark .scroll-select-menu.is-above {
   margin-bottom: 0.75rem;
 }
 
+.upload-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.upload-draft-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 1rem;
+}
+
+.upload-clear-selection {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
 .upload-summary-list {
   margin: 0;
   display: grid;

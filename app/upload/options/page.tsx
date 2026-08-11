@@ -21,10 +21,6 @@ export default async function UploadOptionsPage() {
     redirect("/sign-in");
   }
 
-  if (user.tuning_points <= 0) {
-    redirect("/upload");
-  }
-
   let initialOptions: TuningOptionRead[] = [];
   let optionsLoadFailed = false;
 

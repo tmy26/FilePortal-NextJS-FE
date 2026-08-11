@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import type { FileKind } from "@/lib/types/file";
 import {
   EMPTY_VEHICLE_SELECTION,
@@ -16,7 +16,7 @@ import {
   type VehicleSelection,
   type VehicleTypeRead,
 } from "@/lib/types/vehicle";
-import { clearUploadDraft, readUploadDraft, type UploadDraft } from "@/lib/upload/draft";
+import { clearUploadDraft, readUploadDraft } from "@/lib/upload/draft";
 import {
   listBrands,
   listEcusByEngine,
@@ -38,25 +38,7 @@ export type LoadingField =
 type UseVehicleCascadeOptions = {
   initialVehicleTypes: VehicleTypeRead[];
   catalogLoadFailed?: boolean;
-  restoreDraft?: boolean;
 };
-
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
-}
-
-function subscribeNoop() {
-  return () => {};
-}
-
-function readRestoreDraft(restoreDraft: boolean): UploadDraft | null {
-  if (!restoreDraft) return null;
-  return readUploadDraft();
-}
-
-function getServerDraftSnapshot(): UploadDraft | null {
-  return null;
-}
 
 export type UseVehicleCascadeResult = {
   vehicle: VehicleSelection;
@@ -69,9 +51,12 @@ export type UseVehicleCascadeResult = {
   gearboxes: Gearbox[];
   loadingField: LoadingField;
   catalogError: string | null;
-  /** Restored from upload draft when `restoreDraft` is true; otherwise null. */
+  /** Restored from upload draft when present; otherwise null. */
   restoredFileKind: FileKind | null;
+  /** True when a saved draft exists or the form has any selection. */
+  hasDraft: boolean;
   vehicleReady: boolean;
+  clearSelection: () => void;
   handleVehicleTypeChange: (vehicleTypeId: string) => Promise<void>;
   handleBrandChange: (brandId: string) => Promise<void>;
   handleModelChange: (modelId: string) => Promise<void>;
@@ -81,21 +66,39 @@ export type UseVehicleCascadeResult = {
   handleGearboxChange: (gearbox: Gearbox | "") => void;
 };
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function sanitizeRestoredVehicle(selection: VehicleSelection): VehicleSelection {
+  if (isUnknownVehicleValue(selection.vehicleTypeId)) {
+    return EMPTY_VEHICLE_SELECTION;
+  }
+  if (isUnknownVehicleValue(selection.brandId)) {
+    return {
+      ...EMPTY_VEHICLE_SELECTION,
+      vehicleTypeId: selection.vehicleTypeId,
+    };
+  }
+  return selection;
+}
+
+function hasVehicleProgress(selection: VehicleSelection): boolean {
+  return Boolean(
+    selection.vehicleTypeId ||
+      selection.brandId ||
+      selection.modelId ||
+      selection.generationId ||
+      selection.engineId ||
+      selection.ecuId ||
+      selection.gearbox,
+  );
+}
+
 export function useVehicleCascade({
   initialVehicleTypes,
   catalogLoadFailed = false,
-  restoreDraft = false,
 }: UseVehicleCascadeOptions): UseVehicleCascadeResult {
-  const draft = useSyncExternalStore(
-    subscribeNoop,
-    () => readRestoreDraft(restoreDraft),
-    getServerDraftSnapshot,
-  );
-  const draftSeed =
-    draft?.vehicle != null
-      ? `${draft.fileKind}:${JSON.stringify(draft.vehicle)}`
-      : null;
-
   const [vehicle, setVehicle] = useState<VehicleSelection>(
     EMPTY_VEHICLE_SELECTION,
   );
@@ -113,29 +116,27 @@ export function useVehicleCascade({
   const [restoredFileKind, setRestoredFileKind] = useState<FileKind | null>(
     null,
   );
-  const [seededDraft, setSeededDraft] = useState<string | null>(null);
-
-  // Seed restored draft during render (React-recommended store sync).
-  if (restoreDraft && draftSeed && draft?.vehicle && seededDraft !== draftSeed) {
-    setSeededDraft(draftSeed);
-    setVehicle(draft.vehicle);
-    if (draft.fileKind === "ecu" || draft.fileKind === "gearbox") {
-      setRestoredFileKind(draft.fileKind);
-    }
-  }
+  const [draftPresent, setDraftPresent] = useState(false);
 
   const vehicleReady = isVehicleSelectionComplete(vehicle);
+  const hasDraft =
+    draftPresent || hasVehicleProgress(vehicle) || restoredFileKind != null;
 
   useEffect(() => {
-    if (!restoreDraft) {
-      clearUploadDraft();
-      return;
-    }
-
+    const draft = readUploadDraft();
     if (!draft?.vehicle) return;
 
-    const selection = draft.vehicle;
+    const selection = sanitizeRestoredVehicle(draft.vehicle);
     let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setDraftPresent(true);
+      setVehicle(selection);
+      if (draft.fileKind === "ecu" || draft.fileKind === "gearbox") {
+        setRestoredFileKind(draft.fileKind);
+      }
+    });
 
     async function hydrate(nextSelection: VehicleSelection) {
       setLoadingField("brands");
@@ -143,11 +144,10 @@ export function useVehicleCascade({
         const vehicleTypeId = nextSelection.vehicleTypeId;
         if (!vehicleTypeId) return;
 
-        if (isUnknownVehicleValue(vehicleTypeId)) {
-          if (isVehicleCascadeReady(nextSelection)) {
-            const nextGearboxes = await listGearboxes();
-            if (!cancelled) setGearboxes(nextGearboxes);
-          }
+        if (
+          isUnknownVehicleValue(vehicleTypeId) ||
+          isUnknownVehicleValue(nextSelection.brandId)
+        ) {
           return;
         }
 
@@ -242,7 +242,24 @@ export function useVehicleCascade({
     return () => {
       cancelled = true;
     };
-  }, [restoreDraft, draftSeed, draft?.vehicle]);
+  }, []);
+
+  function clearSelection() {
+    clearUploadDraft();
+    setDraftPresent(false);
+    setRestoredFileKind(null);
+    setVehicle(EMPTY_VEHICLE_SELECTION);
+    setBrands([]);
+    setModels([]);
+    setGenerations([]);
+    setEngines([]);
+    setEcus([]);
+    setGearboxes([]);
+    setLoadingField(null);
+    setCatalogError(
+      catalogLoadFailed ? "Could not load vehicle catalog." : null,
+    );
+  }
 
   function clearDownstreamLists(
     level: "brand" | "model" | "generation" | "engine" | "ecu",
@@ -509,7 +526,9 @@ export function useVehicleCascade({
     loadingField,
     catalogError,
     restoredFileKind,
+    hasDraft,
     vehicleReady,
+    clearSelection,
     handleVehicleTypeChange,
     handleBrandChange,
     handleModelChange,

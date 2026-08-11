@@ -187,12 +187,14 @@ export function TuningOptionsForm({
   }
 
   const pointsNeeded = totalTuningPoints(initialOptions, selectedOptions);
+  const insufficientPoints =
+    selectedOptions.length > 0 && pointsNeeded > currentPoints;
+
   const canSubmit =
     Boolean(selectedFile) &&
     selectedOptions.length > 0 &&
     !pending &&
-    initialOptions.length > 0 &&
-    pointsNeeded <= currentPoints;
+    initialOptions.length > 0;
 
   const summaryRows = [
     { label: "File type", value: draft.fileKind.toUpperCase() },
@@ -263,9 +265,24 @@ export function TuningOptionsForm({
           <p className="upload-tuning-total muted">
             Selected total: {pointsNeeded} TuningPoint
             {pointsNeeded === 1 ? "" : "s"}
+            {insufficientPoints
+              ? ` · You have ${currentPoints} — buy more in the shop before uploading`
+              : null}
           </p>
         ) : null}
       </fieldset>
+
+      {insufficientPoints ? (
+        <FormBanner>
+          This selection needs {pointsNeeded} TuningPoint
+          {pointsNeeded === 1 ? "" : "s"}. You can finish your choices now and
+          buy points in the{" "}
+          <Link href="/shop" className="text-link">
+            shop
+          </Link>{" "}
+          before uploading.
+        </FormBanner>
+      ) : null}
 
       <FileDropZone
         label={selectedFile ? "Change file" : "Browse files"}

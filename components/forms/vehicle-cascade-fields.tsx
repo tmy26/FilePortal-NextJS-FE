@@ -57,8 +57,8 @@ export function VehicleCascadeFields({
     <fieldset className="upload-vehicle">
       <legend className="shop-section-title">Vehicle details</legend>
       <p className="shop-section-lead muted">
-        Choose vehicle type first. Pick Unknown at any level to skip the rest of
-        the cascade. Gearbox is selected last.
+        Select vehicle type and brand first. From model onward you can pick Unknown
+        to skip the rest of the cascade. Gearbox is selected last.
       </p>
 
       <div className="field-grid">
@@ -72,13 +72,10 @@ export function VehicleCascadeFields({
             void wrapChange(handleVehicleTypeChange)(next);
           }}
           placeholder="Select vehicle type"
-          options={[
-            ...vehicleTypes.map((item) => ({
-              value: item.uuid,
-              label: item.name,
-            })),
-            { value: UNKNOWN_VEHICLE_VALUE, label: "Unknown" },
-          ]}
+          options={vehicleTypes.map((item) => ({
+            value: item.uuid,
+            label: item.name,
+          }))}
         />
 
         {shouldShowBrand(vehicle) ? (
@@ -94,13 +91,10 @@ export function VehicleCascadeFields({
             placeholder={
               loadingField === "brands" ? "Loading brands…" : "Select brand"
             }
-            options={[
-              ...brands.map((brand) => ({
-                value: brand.uuid,
-                label: brand.name,
-              })),
-              { value: UNKNOWN_VEHICLE_VALUE, label: "Unknown" },
-            ]}
+            options={brands.map((brand) => ({
+              value: brand.uuid,
+              label: brand.name,
+            }))}
           />
         ) : null}
 

@@ -24,24 +24,26 @@ export const AUTH_COOKIE_BASE = {
   path: "/",
 };
 
-export function accessCookieOptions() {
+function baseCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
     secure: authCookieSecure(),
     sameSite: "lax" as const,
     path: "/",
-    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
+    maxAge,
   };
 }
 
+export function accessCookieOptions() {
+  return baseCookieOptions(ACCESS_TOKEN_MAX_AGE_SECONDS);
+}
+
 export function refreshCookieOptions() {
-  return {
-    httpOnly: true,
-    secure: authCookieSecure(),
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
-  };
+  return baseCookieOptions(REFRESH_TOKEN_MAX_AGE_SECONDS);
+}
+
+export function accessExpiresAtCookieOptions() {
+  return baseCookieOptions(ACCESS_TOKEN_MAX_AGE_SECONDS);
 }
 
 export type AccessTokenState =
@@ -51,43 +53,46 @@ export type AccessTokenState =
   | "expired"
   | "unknown";
 
-function decodeJwtPayload(token: string): { exp?: number } | null {
-  try {
-    const payloadPart = token.split(".")[1];
-    if (!payloadPart) return null;
-
-    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const json = atob(padded);
-    return JSON.parse(json) as { exp?: number };
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Classify access JWT lifetime.
+ * Classify access lifetime using BE-advertised unix expiry (``fp_access_exp``).
+ * Opaque access tokens are not JWTs — do not decode them.
+ *
  * - `expiring`: within skew of expiry (proactive refresh window)
- * - `unknown`: not a decodable JWT — do NOT treat as expired (avoids refresh storms)
+ * - missing exp with a present token: treat as `expiring` so we refresh once and
+ *   populate ``fp_access_exp`` (legacy sessions)
  */
 export function getAccessTokenState(
   token: string | null | undefined,
+  expiresAtUnix?: number | null,
   skewMs = 15_000,
 ): AccessTokenState {
   if (!token) return "missing";
 
-  const payload = decodeJwtPayload(token);
-  if (!payload || typeof payload.exp !== "number") return "unknown";
+  if (expiresAtUnix == null || !Number.isFinite(expiresAtUnix)) {
+    return "expiring";
+  }
 
-  const expiresAt = payload.exp * 1000;
+  const expiresAt = expiresAtUnix * 1000;
   const now = Date.now();
   if (expiresAt <= now) return "expired";
   if (expiresAt <= now + skewMs) return "expiring";
   return "valid";
 }
 
-/** True when the JWT is missing, malformed, or past `exp` (with a small skew). */
-export function isAccessTokenExpired(token: string, skewMs = 15_000): boolean {
-  const state = getAccessTokenState(token, skewMs);
+/** True when the access token is missing or past / near ``exp`` (with a small skew). */
+export function isAccessTokenExpired(
+  token: string | null | undefined,
+  expiresAtUnix?: number | null,
+  skewMs = 15_000,
+): boolean {
+  const state = getAccessTokenState(token, expiresAtUnix, skewMs);
   return state === "missing" || state === "expired" || state === "expiring";
+}
+
+export function parseAccessExpiresAtCookie(
+  value: string | null | undefined,
+): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

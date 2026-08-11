@@ -23,27 +23,50 @@ export type UploadDraft = {
 
 const DRAFT_KEY = "file-portal-upload-draft";
 
-/** Query flag on `/upload` that restores the draft (Edit selection). */
-export const UPLOAD_EDIT_QUERY = "edit";
-export const UPLOAD_EDIT_VALUE = "1";
-export const UPLOAD_EDIT_HREF = `/upload?${UPLOAD_EDIT_QUERY}=${UPLOAD_EDIT_VALUE}`;
+/** Link back to the vehicle selection step (draft is preserved). */
+export const UPLOAD_EDIT_HREF = "/upload";
+
+/** Cache so useSyncExternalStore getSnapshot returns a stable reference. */
+let cachedRaw: string | null = null;
+let cachedDraft: UploadDraft | null = null;
+let cacheReady = false;
+
+function writeCache(raw: string | null, draft: UploadDraft | null): void {
+  cachedRaw = raw;
+  cachedDraft = draft;
+  cacheReady = true;
+}
 
 export function saveUploadDraft(draft: UploadDraft): void {
-  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  const raw = JSON.stringify(draft);
+  sessionStorage.setItem(DRAFT_KEY, raw);
+  writeCache(raw, draft);
 }
 
 export function readUploadDraft(): UploadDraft | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as UploadDraft;
+    if (cacheReady && raw === cachedRaw) {
+      return cachedDraft;
+    }
+    if (!raw) {
+      writeCache(null, null);
+      return null;
+    }
+    const draft = JSON.parse(raw) as UploadDraft;
+    writeCache(raw, draft);
+    return draft;
   } catch {
+    cacheReady = false;
     return null;
   }
 }
 
 export function clearUploadDraft(): void {
+  if (typeof window === "undefined") return;
   sessionStorage.removeItem(DRAFT_KEY);
+  writeCache(null, null);
 }
 
 function labelFor(id: string, names: Map<string, string>): string {

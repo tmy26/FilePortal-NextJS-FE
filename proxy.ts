@@ -1,29 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  ACCESS_EXPIRES_AT_COOKIE,
   ACCESS_TOKEN_COOKIE,
   REFRESH_TOKEN_COOKIE,
   REFRESHED_ACCESS_HEADER,
 } from "@/lib/auth/constants";
 import {
   accessCookieOptions,
+  accessExpiresAtCookieOptions,
   getAccessTokenState,
+  parseAccessExpiresAtCookie,
   refreshCookieOptions,
   type AccessTokenState,
 } from "@/lib/auth/cookie-options";
+import { refreshAccessTokenPair } from "@/lib/auth/refresh-tokens";
 import { getApiBaseUrlOrNull } from "@/lib/config";
-
-type TokenPair = { access: string; refresh: string };
-
-type RefreshAttempt =
-  | { ok: true; tokens: TokenPair }
-  | { ok: false; status: number | null };
-
-/** Collapse parallel RSC refreshes that share the same refresh token. */
-const inflightRefresh = new Map<string, Promise<RefreshAttempt>>();
 
 /**
  * Only this proxy may set the refreshed-token header. A client could otherwise
- * send it and have server code trust an attacker-supplied JWT instead of the
+ * send it and have server code trust an attacker-supplied token instead of the
  * httpOnly cookie, so drop any inbound copy before the handler runs.
  */
 function sanitizedRequestHeaders(request: NextRequest): Headers {
@@ -53,83 +48,16 @@ function clearCookie(
 function clearAuthCookies(response: NextResponse): NextResponse {
   clearCookie(response, ACCESS_TOKEN_COOKIE, accessCookieOptions());
   clearCookie(response, REFRESH_TOKEN_COOKIE, refreshCookieOptions());
+  clearCookie(response, ACCESS_EXPIRES_AT_COOKIE, accessExpiresAtCookieOptions());
   return response;
 }
 
 function shouldAttemptRefresh(state: AccessTokenState): boolean {
-  // `unknown` = non-JWT / undecodable — keep using it; do not spam refresh.
   return state === "missing" || state === "expired" || state === "expiring";
 }
 
-async function refreshAccessToken(
-  apiBase: string,
-  refreshToken: string,
-): Promise<RefreshAttempt> {
-  const existing = inflightRefresh.get(refreshToken);
-  if (existing) return existing;
-
-  // Register the promise synchronously before any await so parallel RSC
-  // requests share one refresh call instead of racing token rotation.
-  let settle!: (result: RefreshAttempt) => void;
-  const shared = new Promise<RefreshAttempt>((resolve) => {
-    settle = resolve;
-  });
-  inflightRefresh.set(refreshToken, shared);
-
-  try {
-    const refreshResponse = await fetch(`${apiBase}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refresh: refreshToken }),
-      cache: "no-store",
-    });
-
-    if (!refreshResponse.ok) {
-      const result: RefreshAttempt = {
-        ok: false,
-        status: refreshResponse.status,
-      };
-      settle(result);
-      return result;
-    }
-
-    const tokens = (await refreshResponse.json()) as {
-      access?: string;
-      refresh?: string;
-    };
-    if (!tokens?.access) {
-      const result: RefreshAttempt = {
-        ok: false,
-        status: refreshResponse.status,
-      };
-      settle(result);
-      return result;
-    }
-
-    const result: RefreshAttempt = {
-      ok: true,
-      tokens: {
-        access: tokens.access,
-        // Rotation optional — reuse current refresh when BE omits a new one.
-        refresh: tokens.refresh || refreshToken,
-      },
-    };
-    settle(result);
-    return result;
-  } catch {
-    const result: RefreshAttempt = { ok: false, status: null };
-    settle(result);
-    return result;
-  } finally {
-    inflightRefresh.delete(refreshToken);
-  }
-}
-
 /**
- * Refresh access JWT before the page/API handler runs.
+ * Refresh access before the page/API handler runs using BE ``access_expires_at``.
  *
  * On hard refresh auth failure (401/403) we clear the dead refresh cookie so
  * subsequent requests stop hammering the API. Soft failures (network/5xx /
@@ -138,9 +66,12 @@ async function refreshAccessToken(
 export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
-  const accessState = getAccessTokenState(accessToken);
+  const expiresAt = parseAccessExpiresAtCookie(
+    request.cookies.get(ACCESS_EXPIRES_AT_COOKIE)?.value,
+  );
+  const accessState = getAccessTokenState(accessToken, expiresAt);
 
-  // Expired access and nothing to refresh with — drop the stale cookie.
+  // Expired access and nothing to refresh with — drop the stale cookies.
   if (
     (accessState === "expired" || accessState === "expiring") &&
     !refreshToken
@@ -157,7 +88,7 @@ export async function proxy(request: NextRequest) {
     return passThrough(request);
   }
 
-  const result = await refreshAccessToken(apiBase, refreshToken);
+  const result = await refreshAccessTokenPair(refreshToken, apiBase);
 
   if (!result.ok) {
     const response = passThrough(request);
@@ -187,6 +118,11 @@ export async function proxy(request: NextRequest) {
     REFRESH_TOKEN_COOKIE,
     result.tokens.refresh,
     refreshCookieOptions(),
+  );
+  response.cookies.set(
+    ACCESS_EXPIRES_AT_COOKIE,
+    String(result.tokens.access_expires_at),
+    accessExpiresAtCookieOptions(),
   );
   return response;
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 import type { FileKind } from "@/lib/types/file";
@@ -31,18 +30,13 @@ const FILE_OPTIONS = [
 ] as const;
 
 type UploadFileFormProps = {
-  currentPoints: number;
   initialVehicleTypes: VehicleTypeRead[];
   catalogLoadFailed?: boolean;
-  /** Only true when opened via Edit selection (`?edit=1`). */
-  restoreDraft?: boolean;
 };
 
 export function UploadFileForm({
-  currentPoints,
   initialVehicleTypes,
   catalogLoadFailed = false,
-  restoreDraft = false,
 }: UploadFileFormProps) {
   const router = useRouter();
   const formId = useId();
@@ -55,7 +49,6 @@ export function UploadFileForm({
   const cascade = useVehicleCascade({
     initialVehicleTypes,
     catalogLoadFailed,
-    restoreDraft,
   });
   const {
     restoredFileKind,
@@ -69,16 +62,24 @@ export function UploadFileForm({
     engines,
     ecus,
     loadingField,
+    hasDraft,
+    clearSelection,
   } = cascade;
 
   const fileKind = fileKindOverride ?? restoredFileKind ?? "ecu";
 
-  const canUpload = currentPoints > 0;
   const canContinue = vehicleReady && !pending && loadingField === null;
 
   function clearErrorAndSelectKind(kind: FileKind) {
     setFileKindOverride(kind);
     setFormError(null);
+  }
+
+  function handleClearSelection() {
+    clearSelection();
+    setFileKindOverride(null);
+    setFormError(null);
+    setPending(false);
   }
 
   function handleContinue(event: FormEvent<HTMLFormElement>) {
@@ -87,7 +88,7 @@ export function UploadFileForm({
 
     if (!isVehicleSelectionComplete(vehicle)) {
       setFormError(
-        "Complete the vehicle details (or choose Unknown where needed) and select a gearbox.",
+        "Complete the vehicle details (select vehicle type and brand, or choose Unknown from model onward where needed) and select a gearbox.",
       );
       return;
     }
@@ -117,28 +118,24 @@ export function UploadFileForm({
     }
   }
 
-  if (!canUpload) {
-    return (
-      <div className="shop-panel">
-        <FormBanner>
-          You need TuningPoints to upload a file. Buy points in the shop to
-          continue.
-        </FormBanner>
-        <div className="shop-result-actions">
-          <Link href="/shop" className="cta">
-            Buy TuningPoints
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={handleContinue} className="shop-panel">
       {formError ? <FormBanner tone="error">{formError}</FormBanner> : null}
 
       {catalogError ? (
         <FormBanner tone="error">{catalogError}</FormBanner>
+      ) : null}
+
+      {hasDraft ? (
+        <div className="upload-draft-actions">
+          <button
+            type="button"
+            className="text-link upload-clear-selection"
+            onClick={handleClearSelection}
+          >
+            Clear your selection
+          </button>
+        </div>
       ) : null}
 
       <fieldset className="shop-packs upload-kinds">

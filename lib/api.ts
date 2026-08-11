@@ -1,5 +1,7 @@
 import { getApiBaseUrl } from "@/lib/config";
 import { formatApiErrorDetail } from "@/lib/http/api-error";
+import { refreshAccessTokenPair } from "@/lib/auth/refresh-tokens";
+import { getRefreshToken, setAuthTokens } from "@/lib/auth/session";
 import type {
   LoginRequest,
   LoginResponse,
@@ -47,6 +49,61 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
+/**
+ * Authenticated fetch with one refresh+retry on 401 (BE opaque access expiry).
+ * Stream bodies are not retried (cannot rewind).
+ */
+async function authorizedFetch(
+  path: string,
+  accessToken: string,
+  init: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
+  const { timeoutMs = API_FETCH_TIMEOUT_MS, headers, ...rest } = init;
+
+  const doFetch = (token: string) =>
+    fetch(`${getApiBaseUrl()}${path}`, {
+      ...rest,
+      headers: {
+        Accept: "application/json",
+        ...(headers as Record<string, string> | undefined),
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+      signal: apiSignal(timeoutMs),
+    });
+
+  let response = await doFetch(accessToken);
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const body = rest.body;
+  const isReplayableBody =
+    body == null || typeof body === "string" || body instanceof URLSearchParams;
+
+  if (!isReplayableBody) {
+    return response;
+  }
+
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) {
+    return response;
+  }
+
+  const refreshed = await refreshAccessTokenPair(refreshToken);
+  if (!refreshed.ok) {
+    return response;
+  }
+
+  try {
+    await setAuthTokens(refreshed.tokens);
+  } catch {
+    // Cookie mutation can fail in RSC; still retry this call with the new access.
+  }
+
+  return doFetch(refreshed.tokens.access);
+}
+
 async function postJson<T>(path: string, data: unknown): Promise<T> {
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
@@ -60,18 +117,17 @@ async function postJson<T>(path: string, data: unknown): Promise<T> {
 }
 
 async function getJson<T>(path: string, accessToken?: string): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
+  if (!accessToken) {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: apiSignal(),
+    });
+    return parseJsonResponse<T>(response);
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: "GET",
-    headers,
-    cache: "no-store",
-    signal: apiSignal(),
-  });
-
+  const response = await authorizedFetch(path, accessToken, { method: "GET" });
   return parseJsonResponse<T>(response);
 }
 
@@ -163,33 +219,19 @@ export async function loginUser(data: LoginRequest): Promise<LoginResponse> {
   return postJson<LoginResponse>("/auth/login", data);
 }
 
-/** Authenticated `GET /user/` — requires a Bearer access JWT. */
+/** Authenticated `GET /user/` — requires a Bearer access token. */
 export async function getCurrentUser(accessToken: string): Promise<UserRead> {
-  const response = await fetch(`${getApiBaseUrl()}/user/`, {
+  const response = await authorizedFetch("/user/", accessToken, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-    signal: apiSignal(),
   });
-
   return parseJsonResponse<UserRead>(response);
 }
 
 /** Authenticated `POST /auth/logout` — revokes refresh tokens on the BE. */
 export async function logoutUser(accessToken: string): Promise<void> {
-  const response = await fetch(`${getApiBaseUrl()}/auth/logout`, {
+  const response = await authorizedFetch("/auth/logout", accessToken, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-    signal: apiSignal(),
   });
-
   await parseJsonResponse<{ detail?: string }>(response);
 }
 
@@ -197,16 +239,9 @@ export async function logoutUser(accessToken: string): Promise<void> {
 export async function deleteUser(
   accessToken: string,
 ): Promise<{ detail: string }> {
-  const response = await fetch(`${getApiBaseUrl()}/user/delete`, {
+  const response = await authorizedFetch("/user/delete", accessToken, {
     method: "DELETE",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-    signal: apiSignal(),
   });
-
   return parseJsonResponse<{ detail: string }>(response);
 }
 
@@ -216,19 +251,16 @@ export async function proxyFileUpload(
   body: ReadableStream<Uint8Array>,
   contentType: string,
 ): Promise<Response> {
-  return fetch(`${getApiBaseUrl()}/files/upload`, {
+  return authorizedFetch("/files/upload", accessToken, {
     method: "POST",
     headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
       "Content-Type": contentType,
     },
     body,
-    cache: "no-store",
-    signal: apiSignal(API_UPLOAD_TIMEOUT_MS),
+    timeoutMs: API_UPLOAD_TIMEOUT_MS,
     // Required by Node/undici when the request body is a stream.
     duplex: "half",
-  } as RequestInit);
+  } as RequestInit & { timeoutMs: number });
 }
 
 /** Authenticated `GET /files` — status/vehicle only; no file payloads. */
@@ -272,18 +304,15 @@ export async function proxyTransferCreate(
   body: ReadableStream<Uint8Array>,
   contentType: string,
 ): Promise<Response> {
-  return fetch(`${getApiBaseUrl()}/transfers`, {
+  return authorizedFetch("/transfers", accessToken, {
     method: "POST",
     headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
       "Content-Type": contentType,
     },
     body,
-    cache: "no-store",
-    signal: apiSignal(API_UPLOAD_TIMEOUT_MS),
+    timeoutMs: API_UPLOAD_TIMEOUT_MS,
     duplex: "half",
-  } as RequestInit);
+  } as RequestInit & { timeoutMs: number });
 }
 
 /** Authenticated `GET /transfers/{id}`. */
@@ -299,15 +328,12 @@ export async function proxyTransferDownload(
   accessToken: string,
   jobId: string,
 ): Promise<Response> {
-  return fetch(
-    `${getApiBaseUrl()}/transfers/${encodeURIComponent(jobId)}/download`,
+  return authorizedFetch(
+    `/transfers/${encodeURIComponent(jobId)}/download`,
+    accessToken,
     {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      signal: apiSignal(API_UPLOAD_TIMEOUT_MS),
+      timeoutMs: API_UPLOAD_TIMEOUT_MS,
     },
   );
 }
@@ -328,18 +354,13 @@ export async function createCheckoutSession(
   accessToken: string,
   quantity: number,
 ): Promise<CheckoutSessionResponse> {
-  const response = await fetch(
-    `${getApiBaseUrl()}/billing/create-checkout-session`,
+  const response = await authorizedFetch(
+    "/billing/create-checkout-session",
+    accessToken,
     {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quantity }),
-      cache: "no-store",
-      signal: apiSignal(),
     },
   );
 
@@ -351,17 +372,15 @@ export async function confirmCheckoutSession(
   accessToken: string,
   sessionId: string,
 ): Promise<ConfirmCheckoutResponse> {
-  const response = await fetch(`${getApiBaseUrl()}/billing/confirm-checkout`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+  const response = await authorizedFetch(
+    "/billing/confirm-checkout",
+    accessToken,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
     },
-    body: JSON.stringify({ session_id: sessionId }),
-    cache: "no-store",
-    signal: apiSignal(),
-  });
+  );
 
   return parseJsonResponse<ConfirmCheckoutResponse>(response);
 }

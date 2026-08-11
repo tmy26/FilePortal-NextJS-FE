@@ -1,15 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { loginAction, type LoginState } from "@/app/actions/auth";
 import { FormBanner } from "@/components/form-banner";
 import { TextField } from "@/components/forms/text-field";
+import { setClientSignedIn } from "@/lib/auth/client-session";
 
 const initialState: LoginState = { ok: false };
 
 export function SignInForm() {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
+
+  useEffect(() => {
+    if (!state.ok) return;
+    setClientSignedIn();
+    router.replace("/");
+    router.refresh();
+  }, [state.ok, router]);
 
   return (
     <form action={formAction} className="create-user-form" noValidate>
@@ -38,8 +48,8 @@ export function SignInForm() {
         />
       </div>
 
-      <button type="submit" className="submit-btn" disabled={pending}>
-        {pending ? "Signing in…" : "Sign in"}
+      <button type="submit" className="submit-btn" disabled={pending || state.ok}>
+        {pending || state.ok ? "Signing in…" : "Sign in"}
       </button>
 
       <p className="auth-footer muted">

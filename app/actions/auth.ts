@@ -79,7 +79,8 @@ export async function loginAction(
     };
   }
 
-  redirect("/");
+  // Client sets localStorage, then navigates — do not redirect here.
+  return { ok: true };
 }
 
 export async function logoutAction(): Promise<void> {

@@ -80,19 +80,12 @@ export function shouldShowEcu(selection: VehicleSelection): boolean {
 
 /** True when the vehicle cascade is finished (Unknown cut-off or ECU chosen). */
 export function isVehicleCascadeReady(selection: VehicleSelection): boolean {
-  if (!selection.vehicleTypeId) {
+  if (!selection.vehicleTypeId || isUnknownVehicleValue(selection.vehicleTypeId)) {
     return false;
   }
 
-  if (isUnknownVehicleValue(selection.vehicleTypeId)) {
-    return true;
-  }
-
-  if (!selection.brandId) {
+  if (!selection.brandId || isUnknownVehicleValue(selection.brandId)) {
     return false;
-  }
-  if (isUnknownVehicleValue(selection.brandId)) {
-    return true;
   }
 
   if (!selection.modelId) {

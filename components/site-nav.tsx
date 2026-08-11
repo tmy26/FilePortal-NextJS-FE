@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { clearClientSignedIn } from "@/lib/auth/client-session";
 import { ACCOUNT_MENU_LINKS } from "@/lib/nav";
 import type { UserRead } from "@/lib/types/user";
 
@@ -59,6 +60,7 @@ export function SiteNav({ user, onOpenSidebar }: SiteNavProps) {
     null;
 
   function handleSignOut() {
+    clearClientSignedIn();
     startLogout(() => {
       logoutAction();
     });
