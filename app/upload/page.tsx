@@ -11,7 +11,6 @@ export const metadata: Metadata = pageMetadata({
   title: "New File Request",
   description: "Request ECU or gearbox file tuning through File Portal.",
   path: "/upload",
-  index: false,
 });
 
 export default async function UploadPage() {

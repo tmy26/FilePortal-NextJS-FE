@@ -14,16 +14,22 @@ File Portal is an account-based web app where customers upload ECU or gearbox fi
 
 ## Important public pages
 - Home: /
+- New File Request: /upload
+- Shop (TuningPoints): /shop
+- Sign in: /sign-in
+- Create account: /register
+- Resend verification: /resend-verification
 - Terms of Service: /terms
 - Privacy Policy: /privacy
 - Cookie Policy: /cookies
 
 ## Account features (sign-in required; not for indexing)
-- Upload / new file request
-- Shop (TuningPoints)
+- Upload options (mid-flow)
+- Shop success / cancel
 - File history
 - Mod transfer
 - Profile
+- Email verification (token link)
 
 ## Keywords
 - File Portal

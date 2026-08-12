@@ -9,7 +9,6 @@ export const metadata: Metadata = pageMetadata({
   title: "Shop",
   description: "Buy TuningPoints for File Portal.",
   path: "/shop",
-  index: false,
 });
 
 export default async function ShopPage() {

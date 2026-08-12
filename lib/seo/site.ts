@@ -135,17 +135,52 @@ export const SITE_SEO = {
 
 /** Bump when public page content changes — keeps sitemap lastmod stable. */
 const SITEMAP_LAST_MODIFIED = {
-  core: "2026-08-10",
-  legal: "2026-08-10",
+  core: "2026-08-12",
+  product: "2026-08-12",
+  auth: "2026-08-12",
+  legal: "2026-08-12",
 } as const;
 
-/** Public routes that should appear in sitemap.xml. */
+/**
+ * Public routes that should appear in sitemap.xml.
+ * Keep in sync with robots allow-list — do not list private/noindex URLs here.
+ */
 export const INDEXABLE_ROUTES: IndexableRoute[] = [
   {
     path: "/",
     changeFrequency: "weekly",
     priority: 1,
     lastModified: SITEMAP_LAST_MODIFIED.core,
+  },
+  {
+    path: "/upload",
+    changeFrequency: "weekly",
+    priority: 0.9,
+    lastModified: SITEMAP_LAST_MODIFIED.product,
+  },
+  {
+    path: "/shop",
+    changeFrequency: "weekly",
+    priority: 0.9,
+    lastModified: SITEMAP_LAST_MODIFIED.product,
+  },
+  {
+    path: "/sign-in",
+    changeFrequency: "monthly",
+    priority: 0.8,
+    lastModified: SITEMAP_LAST_MODIFIED.auth,
+  },
+  {
+    path: "/register",
+    changeFrequency: "monthly",
+    priority: 0.8,
+    lastModified: SITEMAP_LAST_MODIFIED.auth,
+  },
+  {
+    path: "/resend-verification",
+    changeFrequency: "yearly",
+    priority: 0.4,
+    lastModified: SITEMAP_LAST_MODIFIED.auth,
   },
   {
     path: "/terms",
@@ -167,15 +202,16 @@ export const INDEXABLE_ROUTES: IndexableRoute[] = [
   },
 ];
 
-/** Private / account paths — blocked in robots.txt and meta robots. */
+/**
+ * Private / transactional paths — blocked in robots.txt and meta robots.
+ * Mid-flow and account-only URLs stay out of the sitemap.
+ */
 export const NOINDEX_PATH_PREFIXES = [
-  "/sign-in",
-  "/register",
   "/verify-email",
-  "/resend-verification",
   "/profile",
-  "/upload",
-  "/shop",
+  "/upload/options",
+  "/shop/success",
+  "/shop/cancel",
   "/file-history",
   "/mod-transfer",
   "/api",

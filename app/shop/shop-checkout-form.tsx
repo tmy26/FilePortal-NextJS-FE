@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState, type FormEvent } from "react";
+import { useActionState, useState, type FormEvent } from "react";
 import {
   startCheckoutAction,
   type CheckoutState,
@@ -41,14 +41,15 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
   const [quantityInput, setQuantityInput] = useState(
     String(state.quantity ?? DEFAULT_QUANTITY),
   );
+  const [syncedQuantity, setSyncedQuantity] = useState(state.quantity);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [termsError, setTermsError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (state.quantity != null) {
-      setQuantityInput(String(state.quantity));
-    }
-  }, [state.quantity]);
+  // Keep the text field in sync when the server action returns a quantity.
+  if (state.quantity != null && state.quantity !== syncedQuantity) {
+    setSyncedQuantity(state.quantity);
+    setQuantityInput(String(state.quantity));
+  }
 
   const parsedQuantity = parseQuantityInput(quantityInput);
   const quantityOk =
