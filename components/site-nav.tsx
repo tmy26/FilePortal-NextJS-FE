@@ -167,7 +167,8 @@ export function SiteNav({ user, onOpenSidebar }: SiteNavProps) {
                 Sign in
               </Link>
               <Link href="/register" className="site-nav-guest-cta">
-                Create account
+                <span className="site-nav-label-long">Create account</span>
+                <span className="site-nav-label-short">Register</span>
               </Link>
             </div>
           )}

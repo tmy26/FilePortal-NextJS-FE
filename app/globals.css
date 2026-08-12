@@ -184,7 +184,18 @@ a {
   align-items: center;
   justify-content: center;
   width: 100%;
+  min-width: 0;
   padding: 2.5rem 1.25rem 3.5rem;
+}
+
+.page-shell-auth {
+  align-items: flex-start;
+}
+
+@media (min-width: 640px) {
+  .page-shell-auth {
+    align-items: center;
+  }
 }
 
 /* —— Nav —— */
@@ -713,6 +724,7 @@ html.dark .theme-toggle:hover {
 .home-layout,
 .auth-layout {
   width: min(100%, 42rem);
+  min-width: 0;
   animation: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -778,8 +790,10 @@ html.dark .theme-toggle:hover {
 .google-sign-in {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .google-sign-in-button {
@@ -787,6 +801,105 @@ html.dark .theme-toggle:hover {
   justify-content: center;
   min-height: 2.75rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.google-sign-in-button > div,
+.google-sign-in-button iframe {
+  max-width: 100% !important;
+}
+
+.site-nav-label-short {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .page-shell {
+    padding: 1.15rem 0.85rem 2rem;
+  }
+
+  .auth-header {
+    margin-bottom: 1rem;
+  }
+
+  .auth-header h1 {
+    font-size: clamp(1.35rem, 6vw, 1.75rem);
+    line-height: 1.15;
+  }
+
+  .auth-header p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .create-user-form,
+  .success-panel,
+  .shop-panel {
+    padding: 1rem 0.85rem;
+  }
+
+  .auth-sign-in form > .auth-footer,
+  .auth-register form + .auth-divider,
+  .auth-sign-in form + .auth-divider {
+    margin-top: 0.85rem;
+  }
+
+  .auth-divider {
+    margin: 1rem 0;
+  }
+
+  .site-nav-inner {
+    gap: 0.45rem;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .site-nav-brand {
+    font-size: clamp(0.72rem, 3.2vw, 0.95rem);
+    letter-spacing: 0.05em;
+    min-width: 0;
+  }
+
+  .site-nav-actions {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .site-nav-guest {
+    gap: 0.25rem;
+  }
+
+  .site-nav-guest-link,
+  .site-nav-guest-cta {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .site-nav-label-long {
+    display: none;
+  }
+
+  .site-nav-label-short {
+    display: inline;
+  }
+
+  .theme-toggle {
+    padding: 0.4rem;
+  }
+
+  .shop-terms-label {
+    font-size: 0.88rem;
+  }
+
+  .field-grid {
+    gap: 0.8rem;
+  }
+
+  .submit-btn {
+    margin-top: 1rem;
+  }
 }
 
 .google-sign-in-status {
@@ -1134,7 +1247,7 @@ html.dark .scroll-select-menu.is-above {
 
 .phone-country-trigger {
   display: inline-flex;
-  shrink: 0;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 0.75rem;

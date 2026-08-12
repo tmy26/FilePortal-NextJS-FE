@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useState, type FormEvent } from "react";
 import {
   startCheckoutAction,
   type CheckoutState,
@@ -11,6 +11,7 @@ import { FormBanner } from "@/components/form-banner";
 /** 1 TuningPoint = €10 */
 const EURO_PER_POINT = 10;
 const DEFAULT_QUANTITY = 1;
+const MAX_QUANTITY = 10_000;
 
 function formatEuros(amount: number): string {
   return new Intl.NumberFormat("en-IE", {
@@ -18,6 +19,12 @@ function formatEuros(amount: number): string {
     currency: "EUR",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function parseQuantityInput(value: string): number | null {
+  if (value === "") return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 const initialState: CheckoutState = { ok: false, quantity: DEFAULT_QUANTITY };
@@ -31,19 +38,55 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
     startCheckoutAction,
     initialState,
   );
-  const [quantity, setQuantity] = useState(state.quantity ?? DEFAULT_QUANTITY);
+  const [quantityInput, setQuantityInput] = useState(
+    String(state.quantity ?? DEFAULT_QUANTITY),
+  );
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [termsError, setTermsError] = useState<string | null>(null);
 
-  const safeQuantity = Math.max(0, quantity);
+  useEffect(() => {
+    if (state.quantity != null) {
+      setQuantityInput(String(state.quantity));
+    }
+  }, [state.quantity]);
+
+  const parsedQuantity = parseQuantityInput(quantityInput);
+  const quantityOk =
+    parsedQuantity != null &&
+    parsedQuantity >= 1 &&
+    parsedQuantity <= MAX_QUANTITY;
+  const safeQuantity = quantityOk ? parsedQuantity : 0;
   const totalEuros = safeQuantity * EURO_PER_POINT;
-  const quantityOk = quantity >= 1 && quantity <= 10_000;
   const canSubmit = quantityOk;
+
+  function handleQuantityChange(raw: string) {
+    if (raw === "" || /^\d{1,5}$/.test(raw)) {
+      setQuantityInput(raw);
+    }
+  }
+
+  function normalizeQuantityInput() {
+    const parsed = parseQuantityInput(quantityInput);
+    if (parsed == null || parsed < 1) {
+      setQuantityInput(String(DEFAULT_QUANTITY));
+      return;
+    }
+    if (parsed > MAX_QUANTITY) {
+      setQuantityInput(String(MAX_QUANTITY));
+      return;
+    }
+    setQuantityInput(String(parsed));
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (!acceptedTerms) {
       event.preventDefault();
       setTermsError("Please accept the Terms of Service to continue.");
+      return;
+    }
+    if (!quantityOk) {
+      event.preventDefault();
+      normalizeQuantityInput();
     }
   }
 
@@ -74,17 +117,18 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
           <span className="field-label">How many TuningPoints?</span>
           <input
             id="quantity"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            aria-invalid={quantityInput !== "" && !quantityOk}
+            value={quantityInput}
+            onChange={(event) => handleQuantityChange(event.target.value)}
+            onBlur={normalizeQuantityInput}
+          />
+          <input
+            type="hidden"
             name="quantity"
-            type="number"
-            min={1}
-            max={10000}
-            step={1}
-            required
-            value={quantity}
-            onChange={(event) => {
-              const next = Number.parseInt(event.target.value, 10);
-              setQuantity(Number.isFinite(next) ? next : 1);
-            }}
+            value={quantityOk ? parsedQuantity : ""}
           />
         </label>
       </div>
@@ -92,11 +136,13 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
       <div className="shop-order">
         <div className="shop-order-row">
           <span>Purchasing</span>
-          <strong>{safeQuantity} TuningPoints</strong>
+          <strong>
+            {quantityOk ? `${safeQuantity} TuningPoints` : "—"}
+          </strong>
         </div>
         <div className="shop-order-row">
           <span>Total</span>
-          <strong>{formatEuros(totalEuros)}</strong>
+          <strong>{quantityOk ? formatEuros(totalEuros) : "—"}</strong>
         </div>
       </div>
 
@@ -147,7 +193,9 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
       >
         {pending
           ? "Redirecting to Stripe…"
-          : `Buy ${safeQuantity} TuningPoints · ${formatEuros(totalEuros)}`}
+          : quantityOk
+            ? `Buy ${safeQuantity} TuningPoints · ${formatEuros(totalEuros)}`
+            : "Enter a quantity"}
       </button>
     </form>
   );

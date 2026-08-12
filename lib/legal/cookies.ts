@@ -1,6 +1,8 @@
 import type { LegalDocument } from "./types";
+import { SITE_SEO } from "@/lib/seo/site";
 
 const lastUpdated = "10.08.2026";
+const supportEmail = SITE_SEO.contactEmail;
 
 /**
  * Cookie / ePrivacy notice. Auth cookies are strictly necessary —
@@ -51,7 +53,7 @@ export const cookiePolicy: LegalDocument = {
     {
       heading: "6. More information",
       paragraphs: [
-        "For how we process personal data more generally, see our Privacy Policy. Questions: tmytuned@gmail.com.",
+        `For how we process personal data more generally, see our Privacy Policy. Questions: ${supportEmail}.`,
       ],
     },
   ],

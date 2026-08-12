@@ -1,6 +1,8 @@
 import type { LegalDocument } from "./types";
+import { SITE_SEO } from "@/lib/seo/site";
 
 const lastUpdated = "10.08.2026";
+const supportEmail = SITE_SEO.contactEmail;
 
 export const termsOfService: LegalDocument = {
   title: "Terms of Service",
@@ -12,7 +14,7 @@ export const termsOfService: LegalDocument = {
       heading: "1. About File Portal",
       paragraphs: [
         "File Portal provides an account-based portal for purchasing TuningPoints and related file / tuning workflows. We operate from Plovdiv, Bulgaria.",
-        "Contact for account and purchase questions: tmytuned@gmail.com.",
+        `Contact for account and purchase questions: ${supportEmail}.`,
       ],
     },
     {

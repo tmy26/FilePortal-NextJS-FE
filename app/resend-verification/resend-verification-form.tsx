@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/users";
 import { FormBanner } from "@/components/form-banner";
 import { TextField } from "@/components/forms/text-field";
+import { EMAIL_VERIFICATION_SPAM_HINT } from "@/lib/auth/email-verification-copy";
 
 const initialState: ResendVerificationState = { ok: false };
 
@@ -26,6 +27,7 @@ export function ResendVerificationForm({
       <div className="success-panel" role="status">
         <h2>Check your inbox</h2>
         <p>{state.detail}</p>
+        <p className="muted">{EMAIL_VERIFICATION_SPAM_HINT}</p>
         <p className="muted">
           After you confirm, you can{" "}
           <Link href="/sign-in" className="text-link">

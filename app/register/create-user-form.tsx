@@ -21,6 +21,7 @@ import {
 } from "@/lib/phone";
 import type { CreateUserFormValues } from "@/lib/types/user";
 import { isCreateUserFormReady } from "@/lib/users/create-user-validation";
+import { EMAIL_VERIFICATION_SPAM_HINT } from "@/lib/auth/email-verification-copy";
 
 const initialState: CreateUserState = { ok: false };
 
@@ -57,6 +58,7 @@ export function CreateUserForm({ googleClientId = "" }: CreateUserFormProps) {
           <strong>{state.user.email}</strong> to verify your account before
           signing in.
         </p>
+        <p className="muted">{EMAIL_VERIFICATION_SPAM_HINT}</p>
         {!state.user.is_active ? (
           <p className="muted">
             Didn&apos;t get the email?{" "}

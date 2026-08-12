@@ -5,7 +5,7 @@
 ## Identity
 - Product name: File Portal
 - Brand: TMY Tuned (TMYTuned)
-- Contact: tmytuned@gmail.com
+- Contact: ecufileportal.support@gmail.com
 - Location: Plovdiv / Пловдив, Bulgaria
 - Primary language: English (en)
 

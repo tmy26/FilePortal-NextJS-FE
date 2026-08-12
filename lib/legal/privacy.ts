@@ -1,6 +1,8 @@
 import type { LegalDocument } from "./types";
+import { SITE_SEO } from "@/lib/seo/site";
 
 const lastUpdated = "10.08.2026";
+const supportEmail = SITE_SEO.contactEmail;
 
 /**
  * GDPR Art. 13/14 information notice for File Portal (controller in Bulgaria).
@@ -16,7 +18,7 @@ export const privacyPolicy: LegalDocument = {
       heading: "1. Data controller",
       paragraphs: [
         "Controller: File Portal / TMY Tuned, Plovdiv, Republic of Bulgaria.",
-        "Privacy contact email: tmytuned@gmail.com.",
+        `Privacy contact email: ${supportEmail}.`,
         "If you have questions about this policy or want to exercise your rights, contact us at the email above. We aim to respond within one month as required by GDPR.",
       ],
     },
@@ -120,7 +122,7 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: "11. How to exercise your rights",
       paragraphs: [
-        "Email tmytuned@gmail.com with the subject “Privacy request” and describe what you need (access, correction, deletion, etc.). We may ask you to verify your identity before fulfilling the request.",
+        `Email ${supportEmail} with the subject “Privacy request” and describe what you need (access, correction, deletion, etc.). We may ask you to verify your identity before fulfilling the request.`,
         "You can also permanently delete your account from the Profile page (this removes account access and related service data we no longer need to keep). Some payment/accounting records may be retained where the law requires it, in anonymised or minimised form where possible.",
       ],
     },

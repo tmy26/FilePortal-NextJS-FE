@@ -5,6 +5,7 @@ import { ResendVerificationForm } from "./resend-verification-form";
 import { PageShell } from "@/components/page-shell";
 import { getSessionUser } from "@/lib/auth/get-session-user";
 import { pageMetadata } from "@/lib/seo/site";
+import { EMAIL_VERIFICATION_SPAM_HINT } from "@/lib/auth/email-verification-copy";
 
 export const metadata: Metadata = pageMetadata({
   title: "Resend verification email",
@@ -33,7 +34,7 @@ export default async function ResendVerificationPage({ searchParams }: PageProps
           <h1>Resend verification email</h1>
           <p>
             Didn&apos;t get the activation link? Enter the email you registered
-            with and we&apos;ll send a new one.
+            with and we&apos;ll send a new one. {EMAIL_VERIFICATION_SPAM_HINT}
           </p>
         </header>
 

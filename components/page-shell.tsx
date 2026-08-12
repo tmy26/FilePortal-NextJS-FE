@@ -8,7 +8,7 @@ type PageShellProps = {
 
 export function PageShell({ children, variant = "app" }: PageShellProps) {
   if (variant === "plain") {
-    return <main className="page-shell">{children}</main>;
+    return <main className="page-shell page-shell-auth">{children}</main>;
   }
 
   return (

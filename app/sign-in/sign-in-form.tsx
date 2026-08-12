@@ -8,6 +8,7 @@ import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { FormBanner } from "@/components/form-banner";
 import { TextField } from "@/components/forms/text-field";
 import { setClientSignedIn } from "@/lib/auth/client-session";
+import { EMAIL_VERIFICATION_SPAM_HINT } from "@/lib/auth/email-verification-copy";
 
 const initialState: LoginState = { ok: false };
 
@@ -63,6 +64,7 @@ export function SignInForm({ googleClientId = "" }: Props) {
           <Link href="/resend-verification" className="text-link">
             Resend it
           </Link>
+          . {EMAIL_VERIFICATION_SPAM_HINT}
         </p>
       </form>
 
