@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { confirmCheckoutAction } from "@/app/actions/billing";
+import { PendingCheckoutRecovery } from "@/app/shop/pending-checkout-recovery";
 import { AppPageHeader, PageShell } from "@/components/page-shell";
 import { getSessionUser } from "@/lib/auth/get-session-user";
 import { pageMetadata } from "@/lib/seo/site";
@@ -25,13 +26,19 @@ type SuccessPageProps = {
 export default async function ShopSuccessPage({
   searchParams,
 }: SuccessPageProps) {
-  const user = await getSessionUser();
-  if (!user) {
-    redirect("/sign-in");
-  }
-
   const params = await searchParams;
   const sessionId = params.session_id?.trim();
+
+  const user = await getSessionUser();
+  if (!user) {
+    // Preserve Stripe session id so after re-login we can still confirm.
+    if (sessionId) {
+      redirect(
+        `/sign-in?next=${encodeURIComponent(`/shop/success?session_id=${sessionId}`)}`,
+      );
+    }
+    redirect("/sign-in?next=/shop/success");
+  }
 
   // Confirm with Stripe session id server-side, then drop it from the URL
   // so it is never shown in the page or left in the address bar.
@@ -50,35 +57,52 @@ export default async function ShopSuccessPage({
 
   const pointsCredited = Number.parseInt(params.credited ?? "", 10);
   const alreadyProcessed = params.already === "1";
-  const confirmError =
-    params.error === "1"
-      ? "We could not credit your TuningPoints yet. If you were charged, contact support and we will sort it out."
-      : params.credited === undefined && params.already === undefined
-        ? "Payment confirmation is incomplete. If you were charged, contact support."
-        : null;
+  const hasError = params.error === "1";
+  const incomplete =
+    !hasError &&
+    params.credited === undefined &&
+    params.already === undefined;
 
   const refreshedUser = await getSessionUser();
   const balance = refreshedUser?.tuning_points ?? user.tuning_points;
 
-  const description = confirmError
+  const description = hasError
     ? "Checkout finished, but we could not update your balance yet."
     : alreadyProcessed
       ? "This payment was already credited to your account."
       : Number.isFinite(pointsCredited) && pointsCredited > 0
         ? `Added ${pointsCredited} TuningPoints to your account.`
-        : "Your payment is confirmed.";
+        : incomplete
+          ? "Finishing your purchase…"
+          : "Your payment is confirmed.";
 
   return (
     <PageShell>
+      <PendingCheckoutRecovery
+        hasOutcome={
+          Boolean(sessionId) ||
+          params.credited !== undefined ||
+          params.already === "1" ||
+          hasError
+        }
+      />
       <AppPageHeader
         kicker="Payment"
         title="Purchase complete"
         description={description}
       />
       <div className="shop-panel">
-        {confirmError ? (
+        {hasError ? (
           <p className="form-banner" role="alert">
-            {confirmError}
+            We could not credit your TuningPoints yet. If you were charged,
+            contact support and we will sort it out.
+          </p>
+        ) : null}
+        {incomplete ? (
+          <p className="muted">
+            Looking for your Stripe session… If nothing happens, return from
+            checkout with the success link, or contact support with your
+            payment receipt.
           </p>
         ) : null}
         <div className="shop-balance">

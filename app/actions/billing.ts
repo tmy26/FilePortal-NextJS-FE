@@ -12,6 +12,8 @@ export type CheckoutState = {
   ok: boolean;
   error?: string;
   quantity?: number;
+  paymentUrl?: string;
+  sessionId?: string;
 };
 
 function readQuantity(formData: FormData): number {
@@ -58,28 +60,30 @@ export async function startCheckoutAction(
 
   const accessToken = await getAccessToken();
   if (!accessToken) {
-    redirect("/sign-in");
+    redirect("/sign-in?next=/shop");
   }
 
-  let paymentUrl: string;
   try {
     const result = await createCheckoutSession(accessToken, quantity);
-    paymentUrl = result.payment_url;
+    if (!result.payment_url) {
+      return {
+        ok: false,
+        error: "Checkout did not return a payment URL.",
+        quantity,
+      };
+    }
+    // Client saves sessionId then navigates — do not redirect here.
+    return {
+      ok: true,
+      quantity,
+      paymentUrl: result.payment_url,
+      sessionId: result.session_id,
+    };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not start checkout.";
     return { ok: false, error: message, quantity };
   }
-
-  if (!paymentUrl) {
-    return {
-      ok: false,
-      error: "Checkout did not return a payment URL.",
-      quantity,
-    };
-  }
-
-  redirect(paymentUrl);
 }
 
 export type ConfirmCheckoutResult =
@@ -92,7 +96,8 @@ export async function confirmCheckoutAction(
 ): Promise<ConfirmCheckoutResult> {
   const accessToken = await getAccessToken();
   if (!accessToken) {
-    redirect("/sign-in");
+    const next = `/shop/success?session_id=${sessionId}`;
+    redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   }
 
   let result: ConfirmCheckoutResponse;

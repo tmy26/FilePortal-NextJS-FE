@@ -26,8 +26,8 @@ export const cookiePolicy: LegalDocument = {
         "We use only strictly necessary cookies for authentication and security. We do not set advertising, social-media, or marketing-analytics cookies.",
       ],
       bullets: [
-        "fp_access — httpOnly session cookie holding the access token so we can authenticate API requests while you use the Site. Validity follows the token expiry (refreshed while you stay signed in); the cookie itself may be retained up to 24 hours. SameSite=Strict.",
-        "fp_refresh — httpOnly cookie holding a refresh token used to obtain a new access token. Typical lifetime: up to 24 hours. SameSite=Strict.",
+        "fp_access — httpOnly session cookie holding the access token so we can authenticate API requests while you use the Site. Validity follows the token expiry (refreshed while you stay signed in); the cookie itself may be retained up to 24 hours. SameSite=Lax.",
+        "fp_refresh — httpOnly cookie holding a refresh token used to obtain a new access token. Typical lifetime: up to 24 hours. SameSite=Lax.",
       ],
     },
     {

@@ -14,18 +14,19 @@ const initialState: LoginState = { ok: false };
 
 type Props = {
   googleClientId?: string;
+  nextPath?: string;
 };
 
-export function SignInForm({ googleClientId = "" }: Props) {
+export function SignInForm({ googleClientId = "", nextPath = "/" }: Props) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   useEffect(() => {
     if (!state.ok) return;
     setClientSignedIn();
-    router.replace("/");
+    router.replace(nextPath);
     router.refresh();
-  }, [state.ok, router]);
+  }, [state.ok, router, nextPath]);
 
   return (
     <div className="create-user-form auth-sign-in">
@@ -73,7 +74,7 @@ export function SignInForm({ googleClientId = "" }: Props) {
           <p className="auth-divider muted" role="separator">
             or
           </p>
-          <GoogleSignInButton clientId={googleClientId} />
+          <GoogleSignInButton clientId={googleClientId} nextPath={nextPath} />
         </>
       ) : null}
     </div>

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useState, type FormEvent } from "react";
 import {
   startCheckoutAction,
   type CheckoutState,
 } from "@/app/actions/billing";
 import { FormBanner } from "@/components/form-banner";
+import { savePendingCheckoutSessionId } from "@/lib/billing/pending-checkout";
 
 /** 1 TuningPoint = €10 */
 const EURO_PER_POINT = 10;
@@ -51,6 +52,15 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
     setQuantityInput(String(state.quantity));
   }
 
+  // Persist session id, then leave for Stripe (survives cookie-less returns).
+  useEffect(() => {
+    if (!state.ok || !state.paymentUrl) return;
+    if (state.sessionId) {
+      savePendingCheckoutSessionId(state.sessionId);
+    }
+    window.location.assign(state.paymentUrl);
+  }, [state.ok, state.paymentUrl, state.sessionId]);
+
   const parsedQuantity = parseQuantityInput(quantityInput);
   const quantityOk =
     parsedQuantity != null &&
@@ -59,6 +69,7 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
   const safeQuantity = quantityOk ? parsedQuantity : 0;
   const totalEuros = safeQuantity * EURO_PER_POINT;
   const canSubmit = quantityOk;
+  const redirecting = Boolean(state.ok && state.paymentUrl);
 
   function handleQuantityChange(raw: string) {
     if (raw === "" || /^\d{1,5}$/.test(raw)) {
@@ -190,9 +201,9 @@ export function ShopCheckoutForm({ currentPoints }: ShopCheckoutFormProps) {
       <button
         type="submit"
         className="submit-btn"
-        disabled={pending || !canSubmit}
+        disabled={pending || redirecting || !canSubmit}
       >
-        {pending
+        {pending || redirecting
           ? "Redirecting to Stripe…"
           : quantityOk
             ? `Buy ${safeQuantity} TuningPoints · ${formatEuros(totalEuros)}`

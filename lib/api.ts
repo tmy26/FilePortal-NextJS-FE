@@ -346,6 +346,7 @@ export async function proxyTransferDownload(
 
 type CheckoutSessionResponse = {
   payment_url: string;
+  session_id?: string;
 };
 
 export type ConfirmCheckoutResponse = {

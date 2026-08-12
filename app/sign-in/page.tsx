@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SignInForm } from "./sign-in-form";
 import { PageShell } from "@/components/page-shell";
 import { getSessionUser } from "@/lib/auth/get-session-user";
+import { safeInternalPath } from "@/lib/auth/safe-next-path";
 import { pageMetadata } from "@/lib/seo/site";
 
 export const metadata: Metadata = pageMetadata({
@@ -12,10 +13,17 @@ export const metadata: Metadata = pageMetadata({
   path: "/sign-in",
 });
 
-export default async function SignInPage() {
+type SignInPageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const params = await searchParams;
+  const nextPath = safeInternalPath(params.next) ?? "/";
+
   const user = await getSessionUser();
   if (user) {
-    redirect("/");
+    redirect(nextPath);
   }
 
   return (
@@ -28,6 +36,7 @@ export default async function SignInPage() {
 
         <SignInForm
           googleClientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? ""}
+          nextPath={nextPath}
         />
 
         <p className="auth-footer muted">

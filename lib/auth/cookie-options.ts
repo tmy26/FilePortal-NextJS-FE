@@ -8,9 +8,9 @@ import {
  * set AUTH_COOKIE_SECURE=false. Production with TLS should leave this unset
  * (defaults to secure when NODE_ENV=production).
  *
- * SameSite=strict — cookies are never sent on cross-site requests (strongest CSRF
- * protection). If a third-party redirect back to the portal (e.g. Stripe) must
- * arrive with the session on the first GET, set AUTH_COOKIE_SAME_SITE=lax.
+ * SameSite=lax — cookies are sent on top-level GET navigations from other sites
+ * (required for Stripe Checkout → /shop/success). AUTH_COOKIE_SAME_SITE=strict is
+ * ignored; use AUTH_COOKIE_SAME_SITE=none only for special cross-site cases (requires Secure).
  */
 function authCookieSecure(): boolean {
   const override = process.env.AUTH_COOKIE_SECURE;
@@ -23,8 +23,10 @@ type SameSitePolicy = "strict" | "lax" | "none";
 
 function authCookieSameSite(): SameSitePolicy {
   const override = process.env.AUTH_COOKIE_SAME_SITE?.trim().toLowerCase();
-  if (override === "lax" || override === "none") return override;
-  return "strict";
+  // Never use Strict — Stripe Checkout return is a cross-site top-level GET and
+  // would omit auth cookies, so confirm-checkout never runs and the UI looks logged out.
+  if (override === "none") return "none";
+  return "lax";
 }
 
 export const AUTH_COOKIE_BASE = {

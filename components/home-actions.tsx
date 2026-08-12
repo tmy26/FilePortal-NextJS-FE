@@ -1,37 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import {
-  clearClientSignedIn,
-  setClientSignedIn,
-} from "@/lib/auth/client-session";
-import { useClientSignedIn } from "@/lib/auth/use-client-signed-in";
+import { useEffect } from "react";
+import { setClientSignedIn } from "@/lib/auth/client-session";
 
 type HomeActionsProps = {
   hasServerUser: boolean;
 };
 
 /**
- * Home CTAs follow the same localStorage + session gate as AppChrome.
+ * Home CTAs follow the server session (same source of truth as AppChrome).
  */
 export function HomeActions({ hasServerUser }: HomeActionsProps) {
-  const [storageReady, setStorageReady] = useState(false);
-  const clientSignedIn = useClientSignedIn();
-
-  useEffect(() => {
-    queueMicrotask(() => setStorageReady(true));
-  }, []);
-
   useEffect(() => {
     if (hasServerUser) {
       setClientSignedIn();
-    } else {
-      clearClientSignedIn();
     }
   }, [hasServerUser]);
 
-  const isSignedIn = hasServerUser && (!storageReady || clientSignedIn);
+  const isSignedIn = hasServerUser;
 
   return (
     <>

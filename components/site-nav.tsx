@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { clearClientSignedIn } from "@/lib/auth/client-session";
+import { clearPendingCheckoutSessionId } from "@/lib/billing/pending-checkout";
 import { ACCOUNT_MENU_LINKS } from "@/lib/nav";
 import type { UserRead } from "@/lib/types/user";
 
@@ -61,6 +62,7 @@ export function SiteNav({ user, onOpenSidebar }: SiteNavProps) {
 
   function handleSignOut() {
     clearClientSignedIn();
+    clearPendingCheckoutSessionId();
     startLogout(() => {
       logoutAction();
     });

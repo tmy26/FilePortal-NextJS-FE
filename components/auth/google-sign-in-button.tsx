@@ -39,6 +39,8 @@ type Props = {
   clientId: string;
   /** Google button label: sign in vs sign up. */
   variant?: "signin" | "signup";
+  /** Where to go after a successful Google login. */
+  nextPath?: string;
 };
 
 function googleButtonWidth(host: HTMLElement): number {
@@ -49,6 +51,7 @@ function googleButtonWidth(host: HTMLElement): number {
 export function GoogleSignInButton({
   clientId,
   variant = "signin",
+  nextPath = "/",
 }: Props) {
   const router = useRouter();
   const buttonHost = useRef<HTMLDivElement>(null);
@@ -71,13 +74,13 @@ export function GoogleSignInButton({
           return;
         }
         setClientSignedIn();
-        router.replace("/");
+        router.replace(nextPath);
         router.refresh();
       } finally {
         setPending(false);
       }
     },
-    [router, variant],
+    [router, variant, nextPath],
   );
 
   const buttonText = variant === "signup" ? "signup_with" : "signin_with";

@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SiteNav } from "@/components/site-nav";
 import { SiteSidebar } from "@/components/site-sidebar";
-import {
-  clearClientSignedIn,
-  setClientSignedIn,
-} from "@/lib/auth/client-session";
-import { useClientSignedIn } from "@/lib/auth/use-client-signed-in";
+import { setClientSignedIn } from "@/lib/auth/client-session";
 import type { UserRead } from "@/lib/types/user";
 
 type AppChromeProps = {
@@ -18,32 +14,19 @@ type AppChromeProps = {
 /**
  * Client island for nav + sidebar state. Footer stays in the server layout.
  *
- * Signed-in chrome (email, TuningPoints, New File Request, etc.) only shows when
- * the server session user is present and localStorage says signed-in.
+ * Signed-in chrome follows the server session. localStorage is updated when
+ * the session is present, but never cleared here — clearing on a temporary
+ * cookie miss (e.g. Stripe Checkout return) caused false logouts.
  */
 export function AppChrome({ user, children }: AppChromeProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [storageReady, setStorageReady] = useState(false);
-  const clientSignedIn = useClientSignedIn();
-  const hasServerUser = Boolean(user?.uuid);
+  const isSignedIn = Boolean(user?.uuid);
 
   useEffect(() => {
-    queueMicrotask(() => setStorageReady(true));
-  }, []);
-
-  // Keep localStorage aligned with the server session.
-  useEffect(() => {
-    if (hasServerUser) {
+    if (isSignedIn) {
       setClientSignedIn();
-    } else {
-      clearClientSignedIn();
     }
-  }, [hasServerUser]);
-
-  // Before storage is ready, trust the server user to avoid a guest flash.
-  // After that, both the session and localStorage flag are required.
-  const isSignedIn =
-    hasServerUser && (!storageReady || clientSignedIn);
+  }, [isSignedIn]);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
