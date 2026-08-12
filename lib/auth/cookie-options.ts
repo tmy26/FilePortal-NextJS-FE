@@ -7,6 +7,10 @@ import {
  * Secure cookies only work over HTTPS. On plain HTTP (e.g. VPS IP smoke test)
  * set AUTH_COOKIE_SECURE=false. Production with TLS should leave this unset
  * (defaults to secure when NODE_ENV=production).
+ *
+ * SameSite=strict — cookies are never sent on cross-site requests (strongest CSRF
+ * protection). If a third-party redirect back to the portal (e.g. Stripe) must
+ * arrive with the session on the first GET, set AUTH_COOKIE_SAME_SITE=lax.
  */
 function authCookieSecure(): boolean {
   const override = process.env.AUTH_COOKIE_SECURE;
@@ -15,12 +19,22 @@ function authCookieSecure(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+type SameSitePolicy = "strict" | "lax" | "none";
+
+function authCookieSameSite(): SameSitePolicy {
+  const override = process.env.AUTH_COOKIE_SAME_SITE?.trim().toLowerCase();
+  if (override === "lax" || override === "none") return override;
+  return "strict";
+}
+
 export const AUTH_COOKIE_BASE = {
   httpOnly: true,
   get secure() {
     return authCookieSecure();
   },
-  sameSite: "lax" as const,
+  get sameSite() {
+    return authCookieSameSite();
+  },
   path: "/",
 };
 
@@ -28,7 +42,7 @@ function baseCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
     secure: authCookieSecure(),
-    sameSite: "lax" as const,
+    sameSite: authCookieSameSite(),
     path: "/",
     maxAge,
   };
