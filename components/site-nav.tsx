@@ -81,7 +81,7 @@ export function SiteNav({ user, onOpenSidebar }: SiteNavProps) {
         ) : null}
 
         <Link href="/" className="site-nav-brand">
-          TMY <span className="site-nav-brand-accent">Tuned</span>
+          ECU<span className="site-nav-brand-accent">FilePortal</span>
         </Link>
 
         <div className="site-nav-actions">

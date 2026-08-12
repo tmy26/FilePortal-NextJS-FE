@@ -7,6 +7,7 @@ import {
   type CreateUserState,
 } from "@/app/actions/users";
 import { FormBanner } from "@/components/form-banner";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import {
   DEFAULT_PHONE_COUNTRY,
   PhoneField,
@@ -36,7 +37,11 @@ const emptyValues: CreateUserFormValues = {
   acceptTerms: false,
 };
 
-export function CreateUserForm() {
+type CreateUserFormProps = {
+  googleClientId?: string;
+};
+
+export function CreateUserForm({ googleClientId = "" }: CreateUserFormProps) {
   const [state, formAction, pending] = useActionState(
     createUserAction,
     initialState,
@@ -81,6 +86,7 @@ export function CreateUserForm() {
       pending={pending}
       state={state}
       initialValues={values}
+      googleClientId={googleClientId}
     />
   );
 }
@@ -90,11 +96,13 @@ function CreateUserFormFields({
   pending,
   state,
   initialValues,
+  googleClientId = "",
 }: {
   action: (payload: FormData) => void;
   pending: boolean;
   state: CreateUserState;
   initialValues: CreateUserFormValues;
+  googleClientId?: string;
 }) {
   const initialCountry = isSupportedPhoneCountry(initialValues.phoneCountry)
     ? initialValues.phoneCountry
@@ -129,7 +137,8 @@ function CreateUserFormFields({
   }
 
   return (
-    <form action={action} className="create-user-form" noValidate>
+    <div className="create-user-form auth-register">
+      <form action={action} noValidate>
       {state.error ? (
         <FormBanner tone="error">{state.error}</FormBanner>
       ) : null}
@@ -271,7 +280,17 @@ function CreateUserFormFields({
       >
         {pending ? "Creating account…" : "Create account"}
       </button>
-    </form>
+      </form>
+
+      {googleClientId ? (
+        <>
+          <p className="auth-divider muted" role="separator">
+            or
+          </p>
+          <GoogleSignInButton clientId={googleClientId} variant="signup" />
+        </>
+      ) : null}
+    </div>
   );
 }
 

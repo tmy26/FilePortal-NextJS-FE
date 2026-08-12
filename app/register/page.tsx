@@ -26,7 +26,9 @@ export default async function RegisterPage() {
           <h1>Create your account</h1>
           <p>Set up access to upload and manage files through the portal.</p>
         </header>
-        <CreateUserForm />
+        <CreateUserForm
+          googleClientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? ""}
+        />
         <p className="auth-footer muted">
           Already have an account?{" "}
           <Link href="/sign-in" className="text-link">

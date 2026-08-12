@@ -28,15 +28,6 @@ export function SignInForm({ googleClientId = "" }: Props) {
 
   return (
     <div className="create-user-form auth-sign-in">
-      {googleClientId ? (
-        <>
-          <GoogleSignInButton clientId={googleClientId} />
-          <p className="auth-divider muted" role="separator">
-            or
-          </p>
-        </>
-      ) : null}
-
       <form action={formAction} noValidate>
         {state.error ? <FormBanner tone="error">{state.error}</FormBanner> : null}
 
@@ -74,6 +65,15 @@ export function SignInForm({ googleClientId = "" }: Props) {
           </Link>
         </p>
       </form>
+
+      {googleClientId ? (
+        <>
+          <p className="auth-divider muted" role="separator">
+            or
+          </p>
+          <GoogleSignInButton clientId={googleClientId} />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -16,6 +16,7 @@ declare global {
             callback: (response: { credential?: string }) => void;
             ux_mode?: "popup" | "redirect";
             auto_select?: boolean;
+            locale?: string;
           }) => void;
           renderButton: (
             parent: HTMLElement,
@@ -36,9 +37,14 @@ declare global {
 
 type Props = {
   clientId: string;
+  /** Google button label: sign in vs sign up. */
+  variant?: "signin" | "signup";
 };
 
-export function GoogleSignInButton({ clientId }: Props) {
+export function GoogleSignInButton({
+  clientId,
+  variant = "signin",
+}: Props) {
   const router = useRouter();
   const buttonHost = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +57,12 @@ export function GoogleSignInButton({ clientId }: Props) {
       try {
         const result = await googleLoginAction(credential);
         if (!result.ok) {
-          setError(result.error ?? "Google sign-in failed.");
+          setError(
+            result.error ??
+              (variant === "signup"
+                ? "Google sign-up failed."
+                : "Google sign-in failed."),
+          );
           return;
         }
         setClientSignedIn();
@@ -61,8 +72,12 @@ export function GoogleSignInButton({ clientId }: Props) {
         setPending(false);
       }
     },
-    [router],
+    [router, variant],
   );
+
+  const buttonText = variant === "signup" ? "signup_with" : "signin_with";
+  const pendingLabel =
+    variant === "signup" ? "Creating account…" : "Signing in…";
 
   useEffect(() => {
     if (!clientId || !buttonHost.current) return;
@@ -85,6 +100,7 @@ export function GoogleSignInButton({ clientId }: Props) {
         },
         ux_mode: "popup",
         auto_select: false,
+        locale: "en",
       });
 
       buttonHost.current.innerHTML = "";
@@ -92,7 +108,7 @@ export function GoogleSignInButton({ clientId }: Props) {
         type: "standard",
         theme: "outline",
         size: "large",
-        text: "signin_with",
+        text: buttonText,
         shape: "pill",
         width: 320,
       });
@@ -128,7 +144,7 @@ export function GoogleSignInButton({ clientId }: Props) {
       cancelled = true;
       script.removeEventListener("load", mount);
     };
-  }, [clientId, onCredential]);
+  }, [clientId, onCredential, buttonText]);
 
   return (
     <div className="google-sign-in">
@@ -138,7 +154,9 @@ export function GoogleSignInButton({ clientId }: Props) {
         className="google-sign-in-button"
         aria-busy={pending}
       />
-      {pending ? <p className="muted google-sign-in-status">Signing in…</p> : null}
+      {pending ? (
+        <p className="muted google-sign-in-status">{pendingLabel}</p>
+      ) : null}
     </div>
   );
 }
