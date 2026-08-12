@@ -219,6 +219,12 @@ export async function loginUser(data: LoginRequest): Promise<LoginResponse> {
   return postJson<LoginResponse>("/auth/login", data);
 }
 
+export async function loginWithGoogle(
+  idToken: string,
+): Promise<LoginResponse> {
+  return postJson<LoginResponse>("/auth/google", { id_token: idToken });
+}
+
 /** Authenticated `GET /user/` — requires a Bearer access token. */
 export async function getCurrentUser(accessToken: string): Promise<UserRead> {
   const response = await authorizedFetch("/user/", accessToken, {

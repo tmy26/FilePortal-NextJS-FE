@@ -1,0 +1,144 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { googleLoginAction } from "@/app/actions/auth";
+import { FormBanner } from "@/components/form-banner";
+import { setClientSignedIn } from "@/lib/auth/client-session";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+            ux_mode?: "popup" | "redirect";
+            auto_select?: boolean;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement,
+            options: {
+              type?: "standard" | "icon";
+              theme?: "outline" | "filled_blue" | "filled_black";
+              size?: "large" | "medium" | "small";
+              text?: "signin_with" | "continue_with" | "signup_with";
+              shape?: "rectangular" | "pill" | "circle" | "square";
+              width?: number;
+            },
+          ) => void;
+        };
+      };
+    };
+  }
+}
+
+type Props = {
+  clientId: string;
+};
+
+export function GoogleSignInButton({ clientId }: Props) {
+  const router = useRouter();
+  const buttonHost = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  const onCredential = useCallback(
+    async (credential: string) => {
+      setError(null);
+      setPending(true);
+      try {
+        const result = await googleLoginAction(credential);
+        if (!result.ok) {
+          setError(result.error ?? "Google sign-in failed.");
+          return;
+        }
+        setClientSignedIn();
+        router.replace("/");
+        router.refresh();
+      } finally {
+        setPending(false);
+      }
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (!clientId || !buttonHost.current) return;
+
+    let cancelled = false;
+
+    const mount = () => {
+      if (cancelled || !buttonHost.current || !window.google?.accounts?.id) {
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => {
+          if (response.credential) {
+            void onCredential(response.credential);
+          } else {
+            setError("Google did not return a credential.");
+          }
+        },
+        ux_mode: "popup",
+        auto_select: false,
+      });
+
+      buttonHost.current.innerHTML = "";
+      window.google.accounts.id.renderButton(buttonHost.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "signin_with",
+        shape: "pill",
+        width: 320,
+      });
+    };
+
+    const existing = document.getElementById("google-gsi-script");
+    if (window.google?.accounts?.id) {
+      mount();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const script =
+      existing instanceof HTMLScriptElement
+        ? existing
+        : (() => {
+            const el = document.createElement("script");
+            el.id = "google-gsi-script";
+            el.src = "https://accounts.google.com/gsi/client";
+            el.async = true;
+            el.defer = true;
+            document.head.appendChild(el);
+            return el;
+          })();
+
+    script.addEventListener("load", mount);
+    if (window.google?.accounts?.id) {
+      mount();
+    }
+
+    return () => {
+      cancelled = true;
+      script.removeEventListener("load", mount);
+    };
+  }, [clientId, onCredential]);
+
+  return (
+    <div className="google-sign-in">
+      {error ? <FormBanner tone="error">{error}</FormBanner> : null}
+      <div
+        ref={buttonHost}
+        className="google-sign-in-button"
+        aria-busy={pending}
+      />
+      {pending ? <p className="muted google-sign-in-status">Signing in…</p> : null}
+    </div>
+  );
+}

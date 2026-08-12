@@ -758,6 +758,42 @@ html.dark .theme-toggle:hover {
   font-size: 0.95rem;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 1.15rem 0;
+  font-size: 0.85rem;
+  text-transform: lowercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.google-sign-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.google-sign-in-button {
+  display: flex;
+  justify-content: center;
+  min-height: 2.75rem;
+  width: 100%;
+}
+
+.google-sign-in-status {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .create-user-form,
 .success-panel,
 .shop-panel {

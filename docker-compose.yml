@@ -16,6 +16,7 @@ x-web-common: &web-common
     context: .
     args:
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
   image: fileportal-web:latest
   restart: unless-stopped
   env_file: .env

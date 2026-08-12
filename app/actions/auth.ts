@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser, loginUser, logoutUser } from "@/lib/api";
+import { getCurrentUser, loginUser, loginWithGoogle, logoutUser } from "@/lib/api";
 import {
   clearAuthTokens,
   getAccessToken,
@@ -16,6 +16,11 @@ export type LoginState = {
     email?: string;
     password?: string;
   };
+};
+
+export type GoogleLoginState = {
+  ok: boolean;
+  error?: string;
 };
 
 function readString(formData: FormData, key: string): string {
@@ -80,6 +85,31 @@ export async function loginAction(
   }
 
   // Client sets localStorage, then navigates — do not redirect here.
+  return { ok: true };
+}
+
+export async function googleLoginAction(
+  idToken: string,
+): Promise<GoogleLoginState> {
+  if (!idToken.trim()) {
+    return { ok: false, error: "Missing Google credential." };
+  }
+
+  try {
+    const result = await loginWithGoogle(idToken);
+    await setAuthTokens(result.token);
+    await getCurrentUser(result.token.access);
+  } catch (error) {
+    await clearAuthTokens();
+    const message = error instanceof Error ? error.message : "";
+    return {
+      ok: false,
+      error:
+        message ||
+        "Google sign-in failed. Please try again or use email and password.",
+    };
+  }
+
   return { ok: true };
 }
 

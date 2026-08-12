@@ -27,7 +27,9 @@ export default async function SignInPage() {
           <p>Access your File Portal account to manage uploads.</p>
         </header>
 
-        <SignInForm />
+        <SignInForm
+          googleClientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? ""}
+        />
 
         <p className="auth-footer muted">
           Need an account?{" "}
