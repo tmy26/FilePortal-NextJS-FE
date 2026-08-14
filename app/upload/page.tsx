@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { UploadFileForm } from "./upload-file-form";
 import { AppPageHeader, PageShell } from "@/components/page-shell";
+import { PublicPagePreview } from "@/components/seo/public-page-preview";
 import { listVehicleTypes } from "@/lib/api";
 import { getSessionUser } from "@/lib/auth/get-session-user";
+import { isKnownCrawlerRequest } from "@/lib/seo/crawler";
+import { UPLOAD_PUBLIC_PREVIEW } from "@/lib/seo/public-page-copy";
 import { pageMetadata } from "@/lib/seo/site";
 import { getAccessToken } from "@/lib/auth/session";
 
@@ -16,6 +19,9 @@ export const metadata: Metadata = pageMetadata({
 export default async function UploadPage() {
   const user = await getSessionUser();
   if (!user) {
+    if (await isKnownCrawlerRequest()) {
+      return <PublicPagePreview copy={UPLOAD_PUBLIC_PREVIEW} />;
+    }
     redirect("/sign-in");
   }
 
