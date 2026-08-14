@@ -37,7 +37,6 @@ export default async function FileHistoryPage() {
   return (
     <PageShell>
       <AppPageHeader
-        kicker="Account"
         title="File history"
         description="Your file requests by vehicle and status. Open a request to download the original or processed files."
       />

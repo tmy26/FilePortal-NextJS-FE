@@ -37,7 +37,7 @@ export function AppChrome({ user, children }: AppChromeProps) {
         user={isSignedIn ? user : null}
         onOpenSidebar={isSignedIn ? () => setSidebarOpen(true) : undefined}
       />
-      <div className={["site-body", isSignedIn ? "has-sidebar" : ""].join(" ")}>
+      <div className={["site-body", isSignedIn ? "has-sidebar" : ""].join(" ")} id="site-body">
         {isSignedIn ? (
           <SiteSidebar open={sidebarOpen} onClose={closeSidebar} />
         ) : null}

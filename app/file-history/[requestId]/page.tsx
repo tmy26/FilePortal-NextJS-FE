@@ -46,8 +46,8 @@ export default async function FileHistoryDetailPage({
       notFound();
     }
     return (
-      <PageShell>
-        <AppPageHeader kicker="Account" title="Request files" />
+      <PageShell className="with-support-widget">
+        <AppPageHeader title="Request files" />
         <section className="shop-panel">
           <p className="form-banner" role="alert">
             Could not load this request.
@@ -63,12 +63,7 @@ export default async function FileHistoryDetailPage({
   }
 
   return (
-    <PageShell>
-      <AppPageHeader
-        kicker="Account"
-        title="Request files"
-        description="Download the original upload and any processed files delivered for this request."
-      />
+    <PageShell className="with-support-widget">
       <FileHistoryDetail request={detail} currentUserId={user.uuid} />
     </PageShell>
   );

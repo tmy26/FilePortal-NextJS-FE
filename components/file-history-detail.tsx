@@ -25,7 +25,6 @@ export function FileHistoryDetail({
   currentUserId,
 }: FileHistoryDetailProps) {
   const files = sortFiles(request.files);
-  const options = request.tuning_options.map((option) => option.name).join(", ");
   const hasProcessed = files.some((file) => file.role === "processed");
 
   return (
@@ -33,7 +32,6 @@ export function FileHistoryDetail({
       <FileHistoryDetailInteractive
         request={request}
         files={files}
-        options={options}
         hasProcessed={hasProcessed}
       />
       <SupportChat

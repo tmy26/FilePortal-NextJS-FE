@@ -4,15 +4,24 @@ type PageShellProps = {
   children: ReactNode;
   /** Use shop/auth centered layout (default true). */
   variant?: "app" | "plain";
+  className?: string;
 };
 
-export function PageShell({ children, variant = "app" }: PageShellProps) {
+export function PageShell({
+  children,
+  variant = "app",
+  className,
+}: PageShellProps) {
+  const shellClass = ["page-shell", variant === "plain" ? "page-shell-auth" : "", className]
+    .filter(Boolean)
+    .join(" ");
+
   if (variant === "plain") {
-    return <main className="page-shell page-shell-auth">{children}</main>;
+    return <main className={shellClass}>{children}</main>;
   }
 
   return (
-    <main className="page-shell">
+    <main className={shellClass}>
       <div className="auth-layout shop-layout">{children}</div>
     </main>
   );

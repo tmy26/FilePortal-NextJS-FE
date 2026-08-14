@@ -6,9 +6,10 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
 import { FormBanner } from "@/components/form-banner";
-import { formatDate } from "@/lib/format";
 import {
   getSupportWsToken,
   listSupportMessages,
@@ -56,6 +57,51 @@ function mergeMessage(
   return sortMessages([...withoutPending, { ...incoming, pending: false }]);
 }
 
+function formatChatTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const sameDay = date.toDateString() === new Date().toDateString();
+  return new Intl.DateTimeFormat("en-GB", {
+    day: sameDay ? undefined : "numeric",
+    month: sameDay ? undefined : "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function ChatIcon() {
+  return (
+    <svg
+      className="support-widget-icon"
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M4.5 5.75A2.75 2.75 0 0 1 7.25 3h9.5A2.75 2.75 0 0 1 19.5 5.75v8.5A2.75 2.75 0 0 1 16.75 17H12.3l-3.86 3.22A.9.9 0 0 1 7 19.55V17H7.25A2.75 2.75 0 0 1 4.5 14.25z"
+      />
+    </svg>
+  );
+}
+
+function subscribeNoop() {
+  return () => {};
+}
+
+function getClientMountedSnapshot() {
+  return true;
+}
+
+function getServerMountedSnapshot() {
+  return false;
+}
+
+function getWidgetHost(): HTMLElement {
+  return document.getElementById("site-body") ?? document.body;
+}
+
 export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -64,6 +110,12 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    getClientMountedSnapshot,
+    getServerMountedSnapshot,
+  );
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -71,12 +123,16 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
   const conversationIdRef = useRef<string | null>(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const end = messagesEndRef.current;
+    const list = end?.parentElement;
+    if (!list) return;
+    list.scrollTop = list.scrollHeight;
   }, []);
 
   useEffect(() => {
+    if (!isOpen) return;
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [isOpen, messages, scrollToBottom]);
 
   useEffect(() => {
     conversationIdRef.current = conversationId;
@@ -284,80 +340,119 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
     void sendMessage();
   }
 
-  return (
-    <section className="shop-panel support-chat-panel" aria-label="Support messages">
-      <div className="support-chat-header">
-        <h2 className="support-chat-title">Message support</h2>
-        <p className={`support-chat-status${connected ? " is-live" : ""}`}>
-          {connectionLabel}
-        </p>
-      </div>
-
-      {error ? <FormBanner tone="error">{error}</FormBanner> : null}
-
-      <div className="support-chat-messages" role="log" aria-live="polite">
-        {loading ? (
-          <p className="muted support-chat-empty">Loading conversation…</p>
-        ) : messages.length === 0 ? (
-          <p className="muted support-chat-empty">
-            Ask a question about this request. We&apos;ll reply here.
-          </p>
-        ) : (
-          messages.map((message) => {
-            const isOwn = message.sender_id === currentUserId;
-            return (
-              <article
-                key={`${message.id}-${message.client_message_id}`}
-                className={[
-                  "support-chat-bubble",
-                  isOwn ? "is-own" : "is-other",
-                  message.pending ? "is-pending" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+  const widget = (
+    <div className="support-widget">
+      {isOpen ? (
+        <section
+          className="support-widget-window"
+          aria-label="Support messages"
+        >
+          <div className="support-widget-header">
+            <div className="support-widget-heading">
+              <h2 className="support-widget-title">TMYTuned</h2>
+            </div>
+            <div className="support-widget-header-actions">
+              <p
+                className={`support-chat-status${connected ? " is-live" : ""}`}
               >
-                <p className="support-chat-content">{message.content}</p>
-                <p className="support-chat-time muted">
-                  {formatDate(message.created_at)}
-                  {message.pending ? " · Sending…" : ""}
-                </p>
-              </article>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+                {connectionLabel}
+              </p>
+              <button
+                type="button"
+                className="support-widget-close"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close support chat"
+              >
+                ×
+              </button>
+            </div>
+          </div>
 
-      <form className="support-chat-compose" onSubmit={handleSubmit}>
-        <label className="sr-only" htmlFor="support-chat-input">
-          Message
-        </label>
-        <textarea
-          id="support-chat-input"
-          className="support-chat-input"
-          rows={3}
-          maxLength={4000}
-          placeholder="Write your message…"
-          value={draft}
-          disabled={loading || !conversationId}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void sendMessage();
-            }
-          }}
-        />
-        <div className="support-chat-actions">
-          <button
-            type="submit"
-            className="cta"
-            disabled={loading || !conversationId || sending || !draft.trim()}
-          >
-            Send
-          </button>
-        </div>
-      </form>
-    </section>
+          {error ? <FormBanner tone="error">{error}</FormBanner> : null}
+
+          <div className="support-chat-messages" role="log" aria-live="polite">
+            {loading ? (
+              <p className="muted support-chat-empty">Loading conversation…</p>
+            ) : messages.length === 0 ? (
+              <p className="muted support-chat-empty">
+                Ask a question about this request. We&apos;ll reply here.
+              </p>
+            ) : (
+              messages.map((message) => {
+                const isOwn = message.sender_id === currentUserId;
+                return (
+                  <article
+                    key={`${message.id}-${message.client_message_id}`}
+                    className={[
+                      "support-chat-bubble",
+                      isOwn ? "is-own" : "is-other",
+                      message.pending ? "is-pending" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <p className="support-chat-content">{message.content}</p>
+                    <p className="support-chat-time">
+                      {formatChatTime(message.created_at)}
+                      {message.pending ? " · Sending…" : ""}
+                    </p>
+                  </article>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form className="support-chat-compose" onSubmit={handleSubmit}>
+            <label className="sr-only" htmlFor="support-chat-input">
+              Message
+            </label>
+            <textarea
+              id="support-chat-input"
+              className="support-chat-input"
+              rows={1}
+              maxLength={4000}
+              placeholder="Write your message…"
+              value={draft}
+              disabled={loading || !conversationId}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void sendMessage();
+                }
+              }}
+            />
+            <button
+              type="submit"
+              className="support-chat-send"
+              disabled={loading || !conversationId || sending || !draft.trim()}
+            >
+              Send
+            </button>
+          </form>
+        </section>
+      ) : (
+        <button
+          type="button"
+          className="support-widget-teaser"
+          onClick={() => setIsOpen(true)}
+        >
+          <span className="support-widget-teaser-icon">
+            <ChatIcon />
+          </span>
+          <span className="support-widget-teaser-copy">
+            <span className="support-widget-kicker">Looking for support?</span>
+            <span className="support-widget-teaser-cta">Send us a message</span>
+          </span>
+        </button>
+      )}
+    </div>
   );
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(widget, getWidgetHost());
 }
