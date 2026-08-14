@@ -35,11 +35,8 @@ export default async function FileHistoryPage() {
   }
 
   return (
-    <PageShell>
-      <AppPageHeader
-        title="File history"
-        description="Your file requests by vehicle and status. Open a request to download the original or processed files."
-      />
+    <PageShell className="file-history-index">
+      <AppPageHeader title="File history" />
       <FileHistoryList requests={requests} loadFailed={loadFailed} />
     </PageShell>
   );

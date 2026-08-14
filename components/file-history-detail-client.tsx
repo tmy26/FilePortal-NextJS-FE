@@ -5,7 +5,11 @@ import { useState } from "react";
 import { FileDownloadButton } from "@/components/forms/file-download-button";
 import { FormBanner } from "@/components/form-banner";
 import { formatBytes, formatDate } from "@/lib/format";
-import { statusLabel } from "@/lib/file-history/labels";
+import {
+  formatTuningPoints,
+  statusLabel,
+  vehicleHeadline,
+} from "@/lib/file-history/labels";
 import type {
   TuningFileRead,
   TuningRequestDetailRead,
@@ -22,20 +26,6 @@ function roleLabel(role: TuningFileRead["role"], version: number): string {
     return version > 1 ? `Processed v${version}` : "Processed";
   }
   return "Original";
-}
-
-function vehicleTitle(request: TuningRequestDetailRead): string {
-  const parts = [
-    request.brand?.name,
-    request.model?.name,
-    request.generation?.name,
-    request.engine?.name,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : "Unknown vehicle";
-}
-
-function formatPoints(count: number): string {
-  return `${count} TuningPoint${count === 1 ? "" : "s"}`;
 }
 
 function FileGlyph() {
@@ -62,8 +52,7 @@ export function FileHistoryDetailInteractive({
 }: FileHistoryDetailInteractiveProps) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const optionNames = request.tuning_options.map((option) => option.name);
-  const title = vehicleTitle(request);
-  const typeName = request.vehicle_type?.name;
+  const { typeName, title } = vehicleHeadline(request);
 
   return (
     <section className="shop-panel file-history-panel file-history-detail">
@@ -87,7 +76,7 @@ export function FileHistoryDetailInteractive({
       <ul className="file-history-chips">
         <li>{request.file_kind.toUpperCase()}</li>
         <li className="file-history-chip-caps">{request.gearbox}</li>
-        <li>{formatPoints(request.tuning_points_spent)}</li>
+        <li>{formatTuningPoints(request.tuning_points_spent)}</li>
         {request.ecu?.name ? <li>{request.ecu.name}</li> : null}
         <li>{formatDate(request.created)}</li>
       </ul>
