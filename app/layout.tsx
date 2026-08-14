@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Manrope, Oswald } from "next/font/google";
 import { AppChrome } from "@/components/app-chrome";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { getSessionUser } from "@/lib/auth/get-session-user";
 import { SITE_SEO, SITE_TITLE_BRAND, SITE_URL } from "@/lib/seo/site";
@@ -29,17 +28,7 @@ export const metadata: Metadata = {
   authors: [{ name: SITE_SEO.creator, url: SITE_URL }],
   creator: SITE_SEO.creator,
   publisher: SITE_SEO.publisher,
-  keywords: [...SITE_SEO.keywords],
   category: SITE_SEO.category,
-  alternates: {
-    canonical: "/",
-    types: {
-      "text/plain": [
-        { url: "/llm.txt", title: "llm.txt" },
-        { url: "/llms.txt", title: "llms.txt" },
-      ],
-    },
-  },
   robots: {
     index: true,
     follow: true,
@@ -54,7 +43,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: SITE_SEO.locale,
-    url: SITE_URL,
     siteName: SITE_TITLE_BRAND,
     title: SITE_SEO.ogTitle,
     description: SITE_SEO.ogDescription,
@@ -95,7 +83,6 @@ export default async function RootLayout({
       className={`${display.variable} ${sans.variable} h-full antialiased`}
     >
       <body className="h-full">
-        <SiteJsonLd />
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <div className="site-backdrop" aria-hidden="true" />
         <ThemeProvider>

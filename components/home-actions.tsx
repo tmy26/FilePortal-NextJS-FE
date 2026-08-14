@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { setClientSignedIn } from "@/lib/auth/client-session";
+import { HOME_PAGE_COPY } from "@/lib/seo/public-page-copy";
 
 type HomeActionsProps = {
   hasServerUser: boolean;
@@ -10,6 +11,7 @@ type HomeActionsProps = {
 
 /**
  * Home CTAs follow the server session (same source of truth as AppChrome).
+ * Guest register lives in the navbar — do not duplicate it here.
  */
 export function HomeActions({ hasServerUser }: HomeActionsProps) {
   useEffect(() => {
@@ -18,36 +20,16 @@ export function HomeActions({ hasServerUser }: HomeActionsProps) {
     }
   }, [hasServerUser]);
 
-  const isSignedIn = hasServerUser;
-
   return (
-    <>
-      <p>
-        {isSignedIn
-          ? "Buy TuningPoints from the shop, then upload ECU or gearbox files through the portal."
-          : "Use the account icon to sign in or create an account, then upload and manage files through the portal."}
-      </p>
-      <div className="home-actions">
-        {isSignedIn ? (
-          <>
-            <Link href="/upload" className="cta">
-              New File Request
-            </Link>
-            <Link href="/shop" className="cta cta-secondary">
-              Buy TuningPoints
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link href="/sign-in" className="cta">
-              Sign in
-            </Link>
-            <Link href="/register" className="cta cta-secondary">
-              Create account
-            </Link>
-          </>
-        )}
-      </div>
-    </>
+    <div className="home-actions">
+      <Link href="/upload" className="cta">
+        {HOME_PAGE_COPY.primaryCta}
+      </Link>
+      {hasServerUser ? (
+        <Link href="/shop" className="cta cta-secondary">
+          {HOME_PAGE_COPY.signedInSecondaryCta}
+        </Link>
+      ) : null}
+    </div>
   );
 }

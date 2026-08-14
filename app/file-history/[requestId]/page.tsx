@@ -69,7 +69,7 @@ export default async function FileHistoryDetailPage({
         title="Request files"
         description="Download the original upload and any processed files delivered for this request."
       />
-      <FileHistoryDetail request={detail} />
+      <FileHistoryDetail request={detail} currentUserId={user.uuid} />
     </PageShell>
   );
 }

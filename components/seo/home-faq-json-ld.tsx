@@ -2,7 +2,7 @@ import { HOME_SEO_CONTENT } from "@/lib/seo/public-page-copy";
 import { SITE_URL } from "@/lib/seo/site";
 
 export function HomeFaqJsonLd() {
-  const data = {
+  const faq = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: HOME_SEO_CONTENT.faq.map((item) => ({
@@ -19,7 +19,7 @@ export function HomeFaqJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }}
     />
   );
 }

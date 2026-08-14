@@ -11,6 +11,7 @@ export const metadata: Metadata = pageMetadata({
   title: "Sign in",
   description: "Sign in to your File Portal account.",
   path: "/sign-in",
+  index: false,
 });
 
 type SignInPageProps = {

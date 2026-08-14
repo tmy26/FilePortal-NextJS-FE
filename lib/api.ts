@@ -24,6 +24,12 @@ import type {
   TuningRequestDetailRead,
   TuningRequestRead,
 } from "@/lib/types/file-history";
+import type {
+  CreateSupportConversationRequest,
+  MarkSupportReadResponse,
+  SupportConversationRead,
+  SupportMessageRead,
+} from "@/lib/types/support";
 import { withVehicleTypeIdQuery } from "@/lib/vehicles/query";
 
 /** Default API timeout — prevents hung SSR / soft-nav when the BE is unreachable. */
@@ -390,4 +396,63 @@ export async function confirmCheckoutSession(
   );
 
   return parseJsonResponse<ConfirmCheckoutResponse>(response);
+}
+
+/** Open or reuse the support chat for a tuning request. */
+export async function openSupportConversation(
+  accessToken: string,
+  tuningRequestId: string,
+): Promise<SupportConversationRead> {
+  const body: CreateSupportConversationRequest = {
+    tuning_request_id: tuningRequestId,
+  };
+  const response = await authorizedFetch("/support/conversations", accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseJsonResponse<SupportConversationRead>(response);
+}
+
+/** List support conversations, optionally filtered to one tuning request. */
+export async function listSupportConversations(
+  accessToken: string,
+  tuningRequestId?: string,
+): Promise<SupportConversationRead[]> {
+  const query = tuningRequestId
+    ? `?tuning_request_id=${encodeURIComponent(tuningRequestId)}`
+    : "";
+  return getJson<SupportConversationRead[]>(
+    `/support/conversations${query}`,
+    accessToken,
+  );
+}
+
+/** Cursor-paginated message history for a conversation. */
+export async function listSupportMessages(
+  accessToken: string,
+  conversationId: string,
+  options?: { before?: string; limit?: number },
+): Promise<SupportMessageRead[]> {
+  const params = new URLSearchParams();
+  if (options?.before) params.set("before", options.before);
+  if (options?.limit) params.set("limit", String(options.limit));
+  const query = params.size ? `?${params.toString()}` : "";
+  return getJson<SupportMessageRead[]>(
+    `/support/conversations/${encodeURIComponent(conversationId)}/messages${query}`,
+    accessToken,
+  );
+}
+
+/** Mark messages from the other party as read. */
+export async function markSupportConversationRead(
+  accessToken: string,
+  conversationId: string,
+): Promise<MarkSupportReadResponse> {
+  const response = await authorizedFetch(
+    `/support/conversations/${encodeURIComponent(conversationId)}/read`,
+    accessToken,
+    { method: "POST" },
+  );
+  return parseJsonResponse<MarkSupportReadResponse>(response);
 }

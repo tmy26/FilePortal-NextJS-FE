@@ -7,13 +7,15 @@ import { listVehicleTypes } from "@/lib/api";
 import { getSessionUser } from "@/lib/auth/get-session-user";
 import { isKnownCrawlerRequest } from "@/lib/seo/crawler";
 import { UPLOAD_PUBLIC_PREVIEW } from "@/lib/seo/public-page-copy";
-import { pageMetadata } from "@/lib/seo/site";
 import { getAccessToken } from "@/lib/auth/session";
+import { pageMetadata } from "@/lib/seo/site";
 
 export const metadata: Metadata = pageMetadata({
-  title: "New File Request",
-  description: "Request ECU or gearbox file tuning through File Portal.",
+  title: "Upload ECU File Online | Tuning File Request | ECUFilePortal",
+  description:
+    "Upload your ECU or gearbox BIN file online, select the vehicle and tuning options, and manage the complete tuning request securely through ECUFilePortal.",
   path: "/upload",
+  absoluteTitle: true,
 });
 
 export default async function UploadPage() {
@@ -40,8 +42,8 @@ export default async function UploadPage() {
   return (
     <PageShell>
       <AppPageHeader
-        kicker="File Portal"
-        title="New File Request"
+        kicker="Tuning file request"
+        title="Upload Your ECU or TCU File"
         description="Choose ECU or gearbox and select the vehicle details, then continue to pick tuning options and upload your .bin file."
       />
       <UploadFileForm

@@ -11,6 +11,7 @@ export const metadata: Metadata = pageMetadata({
   title: "Resend verification email",
   description: "Request a new File Portal account activation email.",
   path: "/resend-verification",
+  index: false,
 });
 
 type PageProps = {

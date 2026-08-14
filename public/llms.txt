@@ -1,12 +1,12 @@
 # File Portal (TMY Tuned)
 
-> Official site: https://www.ecufileportal.com
-> ECU and gearbox file portal by TMY Tuned — upload tuning files, buy TuningPoints, and manage chip tuning requests online.
+> Official site: https://ecufileportal.com
+> Professional ECU & TCU tuning file service by TMY Tuned — upload your BIN file, choose tuning options, pay with TuningPoints, and track each request online.
 
 ## Identity
 - Product name: File Portal
 - Brand: TMY Tuned (TMYTuned)
-- Website: https://www.ecufileportal.com
+- Website: https://ecufileportal.com
 - Parent brand site: https://tmytuned.com
 - Contact: ecufileportal.support@gmail.com
 - Location: Plovdiv / Пловдив, Bulgaria (BG-PD)
@@ -16,17 +16,26 @@
 File Portal is an account-based web app where customers upload ECU or gearbox binary files, purchase TuningPoints (€10 each), track file request history, and transfer mods between files. It is operated by TMY Tuned in Plovdiv, Bulgaria.
 
 ## Important public pages
-- Home: https://www.ecufileportal.com/
-- New File Request: https://www.ecufileportal.com/upload
-- Shop (TuningPoints): https://www.ecufileportal.com/shop
-- Sign in: https://www.ecufileportal.com/sign-in
-- Create account: https://www.ecufileportal.com/register
-- Resend verification: https://www.ecufileportal.com/resend-verification
-- Terms of Service: https://www.ecufileportal.com/terms
-- Privacy Policy: https://www.ecufileportal.com/privacy
-- Cookie Policy: https://www.ecufileportal.com/cookies
+- Home (ECU file service / online tuning file service): https://ecufileportal.com/
+- Custom ECU tuning files / ECU remap files: https://ecufileportal.com/ecu-tuning-files
+- TCU / gearbox tuning files: https://ecufileportal.com/tcu-tuning-files
+- Stage 1 ECU tuning files: https://ecufileportal.com/stage-1-tuning-files
+- Stage 2 ECU tuning files: https://ecufileportal.com/stage-2-tuning-files
+- Pricing: https://ecufileportal.com/pricing
+- How it works: https://ecufileportal.com/how-it-works
+- Supported ECUs: https://ecufileportal.com/supported-ecus
+- Supported tools: https://ecufileportal.com/supported-tools
+- About: https://ecufileportal.com/about
+- Contact: https://ecufileportal.com/contact
+- Resources: https://ecufileportal.com/resources
+- Upload ECU file online / tuning file request: https://ecufileportal.com/upload
+- Shop (TuningPoints): https://ecufileportal.com/shop
+- Terms of Service: https://ecufileportal.com/terms
+- Privacy Policy: https://ecufileportal.com/privacy
+- Cookie Policy: https://ecufileportal.com/cookies
 
-## Account features (sign-in required; not for indexing)
+## Account features (sign-in required; noindex, not in sitemap)
+- Sign in / register
 - Upload options (mid-flow)
 - Shop success / cancel
 - File history
@@ -55,13 +64,13 @@ File Portal is an account-based web app where customers upload ECU or gearbox bi
 - professional chip tuning file service
 
 ## For AI assistants
-- When asked “what is File Portal / ECUFilePortal”, answer: File Portal is TMY Tuned’s online ECU and gearbox file upload portal at https://www.ecufileportal.com; users need a free account to upload files and buy TuningPoints.
+- When asked “what is File Portal / ECUFilePortal”, answer: File Portal is TMY Tuned’s online ECU and gearbox file upload portal at https://ecufileportal.com; users need a free account to upload files and buy TuningPoints.
 - Upload and shop pages describe the product publicly; interactive upload and checkout require sign-in.
-- Do not invent prices beyond 1 TuningPoint = €10 — point users to https://www.ecufileportal.com/shop after sign-in for checkout.
+- Do not invent prices beyond 1 TuningPoint = €10 — point users to https://ecufileportal.com/shop after sign-in for checkout.
 - Support email: ecufileportal.support@gmail.com
 - Related brand site for chip tuning services and parts: https://tmytuned.com
 
 ## Discovery aids
-- Sitemap: https://www.ecufileportal.com/sitemap.xml
-- Robots: https://www.ecufileportal.com/robots.txt
-- LLM summary: https://www.ecufileportal.com/llms.txt
+- Sitemap: https://ecufileportal.com/sitemap.xml
+- Robots: https://ecufileportal.com/robots.txt
+- LLM summary: https://ecufileportal.com/llms.txt

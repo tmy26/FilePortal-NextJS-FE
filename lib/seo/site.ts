@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CANONICAL_ORIGIN } from "./canonical-host";
 
 export type SitemapChangeFrequency =
   | "always"
@@ -23,11 +24,29 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${pathname}`;
 }
 
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
+export const SITE_URL = resolveSiteUrl();
+
+function resolveSiteUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "";
+  if (!raw) {
+    return process.env.NODE_ENV === "production"
+      ? CANONICAL_ORIGIN
+      : "http://localhost:3000";
+  }
+  try {
+    const hostname = new URL(raw).hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1"
+    ) {
+      return raw;
+    }
+  } catch {
+    return CANONICAL_ORIGIN;
+  }
+  return CANONICAL_ORIGIN;
+}
 
 export const SITE_NAME = "File Portal";
 export const SITE_TITLE_BRAND = "File Portal";
@@ -42,11 +61,11 @@ export const SITE_SEO = {
   locale: "en_GB",
   language: "en",
   title: {
-    default: `${SITE_TITLE_BRAND} – ECU & gearbox file portal by TMY Tuned`,
+    default: "ECU File Service | Online ECU Tuning Files | ECUFilePortal",
     template: `%s · ${SITE_TITLE_BRAND}`,
   },
   description:
-    "File Portal by TMY Tuned — upload ECU and gearbox files, buy TuningPoints, track requests, and transfer mods securely.",
+    "Online ECU and TCU file service by TMY Tuned. Create an account, upload the original BIN, pay with TuningPoints, and track each request until the processed file is Ready.",
   keywords: [
     "File Portal",
     "TMY Tuned",
@@ -298,12 +317,12 @@ export const SITE_SEO = {
     "NOx system solution",
   ],
   category: "automotive",
-  ogTitle: `${SITE_TITLE_BRAND} – ECU & gearbox file portal`,
+  ogTitle: "ECU File Service | Online ECU Tuning Files | ECUFilePortal",
   ogDescription:
-    "Upload ECU and gearbox files, purchase TuningPoints, and manage tuning requests with File Portal by TMY Tuned.",
-  twitterTitle: `${SITE_TITLE_BRAND} – ECU & gearbox file portal`,
+    "Online ECU and TCU file service by TMY Tuned. Create an account, upload the original BIN, pay with TuningPoints, and track each request until the processed file is Ready.",
+  twitterTitle: "ECU File Service | Online ECU Tuning Files | ECUFilePortal",
   twitterDescription:
-    "Secure file portal for ECU/gearbox uploads, TuningPoints, and request history — by TMY Tuned.",
+    "Online ECU and TCU file service by TMY Tuned. Create an account, upload the original BIN, pay with TuningPoints, and track each request until the processed file is Ready.",
   creator: "TMY Tuned",
   publisher: "TMY Tuned",
   contactEmail: "ecufileportal.support@gmail.com",
@@ -315,17 +334,15 @@ export const SITE_SEO = {
 
 /** Bump when public page content changes — keeps sitemap lastmod stable. */
 const SITEMAP_LAST_MODIFIED = {
-  core: "2026-08-12",
-  product: "2026-08-12",
-  auth: "2026-08-12",
-  legal: "2026-08-12",
+  core: "2026-08-14",
+  product: "2026-08-14",
 } as const;
 
 /**
- * Public routes that should appear in sitemap.xml.
- * Keep in sync with robots allow-list — do not list private/noindex URLs here.
+ * Canonical URLs submitted in sitemap.xml — only pages we want in Search.
+ * Auth, account, checkout, API, legal, redirects, and spam URLs stay out.
  */
-export const INDEXABLE_ROUTES: IndexableRoute[] = [
+export const SITEMAP_CORE_ROUTES: IndexableRoute[] = [
   {
     path: "/",
     changeFrequency: "weekly",
@@ -344,57 +361,43 @@ export const INDEXABLE_ROUTES: IndexableRoute[] = [
     priority: 0.9,
     lastModified: SITEMAP_LAST_MODIFIED.product,
   },
-  {
-    path: "/sign-in",
-    changeFrequency: "monthly",
-    priority: 0.8,
-    lastModified: SITEMAP_LAST_MODIFIED.auth,
-  },
-  {
-    path: "/register",
-    changeFrequency: "monthly",
-    priority: 0.8,
-    lastModified: SITEMAP_LAST_MODIFIED.auth,
-  },
-  {
-    path: "/resend-verification",
-    changeFrequency: "yearly",
-    priority: 0.4,
-    lastModified: SITEMAP_LAST_MODIFIED.auth,
-  },
-  {
-    path: "/terms",
-    changeFrequency: "yearly",
-    priority: 0.3,
-    lastModified: SITEMAP_LAST_MODIFIED.legal,
-  },
-  {
-    path: "/privacy",
-    changeFrequency: "yearly",
-    priority: 0.3,
-    lastModified: SITEMAP_LAST_MODIFIED.legal,
-  },
-  {
-    path: "/cookies",
-    changeFrequency: "yearly",
-    priority: 0.3,
-    lastModified: SITEMAP_LAST_MODIFIED.legal,
-  },
 ];
 
+/** Money-page slugs allowed in sitemap.xml, in preferred order. */
+export const SITEMAP_PAGE_SLUGS = [
+  "ecu-tuning-files",
+  "tcu-tuning-files",
+  "stage-1-tuning-files",
+  "stage-2-tuning-files",
+  "pricing",
+  "how-it-works",
+  "supported-ecus",
+  "supported-tools",
+  "about",
+  "contact",
+  "resources",
+] as const;
+
 /**
- * Private / transactional paths — blocked in robots.txt and meta robots.
- * Mid-flow and account-only URLs stay out of the sitemap.
+ * HTML routes that must send noindex. Do not Disallow these in robots.txt —
+ * Google has to recrawl them to see the robots meta / X-Robots-Tag.
+ * /upload, /shop, /pricing, and other commercial landings stay indexable.
  */
 export const NOINDEX_PATH_PREFIXES = [
+  "/sign-in",
+  "/register",
+  "/resend-verification",
   "/verify-email",
+  "/forgot-password",
+  "/activate",
   "/profile",
+  "/account",
+  "/history",
+  "/file-history",
   "/upload/options",
   "/shop/success",
   "/shop/cancel",
-  "/file-history",
   "/mod-transfer",
-  "/api",
 ] as const;
 
 type PageMetadataOptions = {
@@ -403,6 +406,8 @@ type PageMetadataOptions = {
   path: string;
   /** Defaults to true. Set false for auth/account pages. */
   index?: boolean;
+  /** When true, `title` is used as-is (already includes the brand). */
+  absoluteTitle?: boolean;
 };
 
 /** Shared per-route metadata: title, description, canonical, OG, robots. */
@@ -411,16 +416,22 @@ export function pageMetadata({
   description,
   path,
   index = true,
+  absoluteTitle = false,
 }: PageMetadataOptions): Metadata {
   const url = path.startsWith("/") ? path : `/${path}`;
   const absolute = absoluteUrl(url);
-  const fullTitle = `${title} · ${SITE_TITLE_BRAND}`;
+  const fullTitle = absoluteTitle ? title : `${title} · ${SITE_TITLE_BRAND}`;
 
   return {
-    title,
+    title: absoluteTitle ? { absolute: title } : title,
     description,
+    ...(index
+      ? {
+          keywords: [...SITE_SEO.keywords],
+        }
+      : {}),
     alternates: {
-      canonical: url,
+      canonical: absolute,
     },
     openGraph: {
       title: fullTitle,
@@ -442,10 +453,10 @@ export function pageMetadata({
         }
       : {
           index: false,
-          follow: false,
+          follow: true,
           googleBot: {
             index: false,
-            follow: false,
+            follow: true,
           },
         },
   };

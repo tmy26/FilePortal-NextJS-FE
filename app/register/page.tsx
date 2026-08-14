@@ -10,6 +10,7 @@ export const metadata: Metadata = pageMetadata({
   title: "Create account",
   description: "Create a File Portal account to upload and manage tuning files.",
   path: "/register",
+  index: false,
 });
 
 export default async function RegisterPage() {
