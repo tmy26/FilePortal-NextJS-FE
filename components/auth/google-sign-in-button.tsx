@@ -48,12 +48,17 @@ function googleButtonWidth(host: HTMLElement): number {
   return Math.min(400, Math.max(200, Math.floor(measured || 280)));
 }
 
+const GSI_SCRIPT_ID = "google-gsi-script";
+const GSI_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
+const WIDTH_CHANGE_PX = 8;
+
 export function GoogleSignInButton({
   clientId,
   variant = "signin",
   nextPath = "/",
 }: Props) {
   const router = useRouter();
+  const widthHost = useRef<HTMLDivElement>(null);
   const buttonHost = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -88,34 +93,49 @@ export function GoogleSignInButton({
     variant === "signup" ? "Creating account…" : "Signing in…";
 
   useEffect(() => {
-    if (!clientId || !buttonHost.current) return;
+    if (!clientId || !buttonHost.current || !widthHost.current) return;
 
     let cancelled = false;
+    let initialized = false;
+    let lastWidth = 0;
     let observer: ResizeObserver | null = null;
 
-    const mount = () => {
-      if (cancelled || !buttonHost.current || !window.google?.accounts?.id) {
+    const mount = (force = false) => {
+      const host = buttonHost.current;
+      const widthSource = widthHost.current;
+      if (cancelled || !host || !widthSource || !window.google?.accounts?.id) {
         return;
       }
 
-      const width = googleButtonWidth(buttonHost.current);
+      const width = googleButtonWidth(widthSource);
+      if (
+        !force &&
+        host.childElementCount > 0 &&
+        Math.abs(width - lastWidth) < WIDTH_CHANGE_PX
+      ) {
+        return;
+      }
+      lastWidth = width;
 
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (response) => {
-          if (response.credential) {
-            void onCredential(response.credential);
-          } else {
-            setError("Google did not return a credential.");
-          }
-        },
-        ux_mode: "popup",
-        auto_select: false,
-        locale: "en",
-      });
+      if (!initialized) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response) => {
+            if (response.credential) {
+              void onCredential(response.credential);
+            } else {
+              setError("Google did not return a credential.");
+            }
+          },
+          ux_mode: "popup",
+          auto_select: false,
+          locale: "en",
+        });
+        initialized = true;
+      }
 
-      buttonHost.current.innerHTML = "";
-      window.google.accounts.id.renderButton(buttonHost.current, {
+      host.replaceChildren();
+      window.google.accounts.id.renderButton(host, {
         type: "standard",
         theme: "outline",
         size: "large",
@@ -125,38 +145,28 @@ export function GoogleSignInButton({
       });
     };
 
-    const existing = document.getElementById("google-gsi-script");
-    if (window.google?.accounts?.id) {
-      mount();
-      observer = new ResizeObserver(mount);
-      observer.observe(buttonHost.current);
-      return () => {
-        cancelled = true;
-        observer?.disconnect();
-      };
-    }
-
+    const existing = document.getElementById(GSI_SCRIPT_ID);
     const script =
       existing instanceof HTMLScriptElement
         ? existing
         : (() => {
             const el = document.createElement("script");
-            el.id = "google-gsi-script";
-            el.src = "https://accounts.google.com/gsi/client";
+            el.id = GSI_SCRIPT_ID;
+            el.src = GSI_SCRIPT_SRC;
             el.async = true;
             el.defer = true;
             document.head.appendChild(el);
             return el;
           })();
 
-    const handleLoad = () => mount();
+    const handleLoad = () => mount(true);
     script.addEventListener("load", handleLoad);
     if (window.google?.accounts?.id) {
-      mount();
+      mount(true);
     }
 
-    observer = new ResizeObserver(mount);
-    observer.observe(buttonHost.current);
+    observer = new ResizeObserver(() => mount());
+    observer.observe(widthHost.current);
 
     return () => {
       cancelled = true;
@@ -166,7 +176,7 @@ export function GoogleSignInButton({
   }, [clientId, onCredential, buttonText]);
 
   return (
-    <div className="google-sign-in">
+    <div ref={widthHost} className="google-sign-in">
       {error ? <FormBanner tone="error">{error}</FormBanner> : null}
       <div
         ref={buttonHost}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SiteNav } from "@/components/site-nav";
 import { SiteSidebar } from "@/components/site-sidebar";
+import { WorkingHoursPanel } from "@/components/working-hours-panel";
 import { setClientSignedIn } from "@/lib/auth/client-session";
 import type { UserRead } from "@/lib/types/user";
 
@@ -42,6 +43,7 @@ export function AppChrome({ user, children }: AppChromeProps) {
           <SiteSidebar open={sidebarOpen} onClose={closeSidebar} />
         ) : null}
         <div className="site-main">{children}</div>
+        {isSignedIn ? <WorkingHoursPanel /> : null}
       </div>
     </>
   );
