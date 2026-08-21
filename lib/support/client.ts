@@ -75,8 +75,27 @@ export async function listSupportMessages(
 export async function markSupportConversationRead(
   conversationId: string,
 ): Promise<MarkSupportReadResponse> {
+  return postConversationAction(conversationId, "read");
+}
+
+export async function closeSupportConversation(
+  conversationId: string,
+): Promise<SupportConversationRead> {
+  return postConversationAction(conversationId, "close");
+}
+
+export async function reopenSupportConversation(
+  conversationId: string,
+): Promise<SupportConversationRead> {
+  return postConversationAction(conversationId, "reopen");
+}
+
+async function postConversationAction<T>(
+  conversationId: string,
+  action: "read" | "close" | "reopen",
+): Promise<T> {
   const response = await supportFetch(
-    `/conversations/${encodeURIComponent(conversationId)}/read`,
+    `/conversations/${encodeURIComponent(conversationId)}/${action}`,
     { method: "POST" },
   );
   return parseResponse(response);

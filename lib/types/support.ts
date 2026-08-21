@@ -53,6 +53,14 @@ export type SupportMessageCreatedEvent = {
   };
 };
 
+export type SupportConversationUpdatedEvent = {
+  type: "conversation.updated";
+  data: {
+    conversation_id: string;
+    status: ConversationStatus;
+  };
+};
+
 export type SupportWsErrorEvent = {
   type: "error";
   data: { detail: string };
@@ -60,6 +68,7 @@ export type SupportWsErrorEvent = {
 
 export type SupportWsServerEvent =
   | SupportMessageCreatedEvent
+  | SupportConversationUpdatedEvent
   | SupportWsErrorEvent
   | { type: "messages.read"; data: Record<string, unknown> };
 

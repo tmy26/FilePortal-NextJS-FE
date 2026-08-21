@@ -449,10 +449,46 @@ export async function markSupportConversationRead(
   accessToken: string,
   conversationId: string,
 ): Promise<MarkSupportReadResponse> {
+  return postSupportConversationAction<MarkSupportReadResponse>(
+    accessToken,
+    conversationId,
+    "read",
+  );
+}
+
+/** Close a support chat so neither party can send further messages. */
+export async function closeSupportConversation(
+  accessToken: string,
+  conversationId: string,
+): Promise<SupportConversationRead> {
+  return postSupportConversationAction<SupportConversationRead>(
+    accessToken,
+    conversationId,
+    "close",
+  );
+}
+
+/** Reopen a closed support chat. */
+export async function reopenSupportConversation(
+  accessToken: string,
+  conversationId: string,
+): Promise<SupportConversationRead> {
+  return postSupportConversationAction<SupportConversationRead>(
+    accessToken,
+    conversationId,
+    "reopen",
+  );
+}
+
+async function postSupportConversationAction<T>(
+  accessToken: string,
+  conversationId: string,
+  action: "read" | "close" | "reopen",
+): Promise<T> {
   const response = await authorizedFetch(
-    `/support/conversations/${encodeURIComponent(conversationId)}/read`,
+    `/support/conversations/${encodeURIComponent(conversationId)}/${action}`,
     accessToken,
     { method: "POST" },
   );
-  return parseJsonResponse<MarkSupportReadResponse>(response);
+  return parseJsonResponse<T>(response);
 }

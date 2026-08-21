@@ -362,7 +362,9 @@ a {
   flex-direction: column;
   width: min(18rem, 86vw);
   height: 100dvh;
-  padding: calc(var(--site-nav-height) + 1rem) 0.85rem 1.25rem;
+  gap: 1rem;
+  padding: calc(var(--site-nav-height) + 1rem) 0.85rem
+    max(1.25rem, env(safe-area-inset-bottom));
   border-right: 1px solid var(--line);
   background: var(--header-bg);
   backdrop-filter: blur(16px);
@@ -439,7 +441,7 @@ a {
     height: auto;
     align-self: stretch;
     flex-shrink: 0;
-    padding: 1.15rem 0.85rem 9.75rem;
+    padding: 1.15rem 0.85rem 1.15rem;
     transform: none;
     visibility: visible;
     overflow-y: auto;
@@ -3319,11 +3321,9 @@ html.dark .file-history-detail {
 }
 
 .working-hours-panel {
-  position: absolute;
-  z-index: 30;
-  left: max(0.75rem, env(safe-area-inset-left));
-  bottom: 1rem;
-  width: min(16.5rem, calc(100% - 1.5rem));
+  flex-shrink: 0;
+  margin-top: auto;
+  width: 100%;
   padding: 0.8rem 0.9rem 0.85rem;
   border: 1px solid color-mix(in srgb, var(--foreground) 10%, var(--line));
   border-radius: 1.2rem;
@@ -3333,7 +3333,6 @@ html.dark .file-history-detail {
     inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
     0 18px 44px rgba(18, 35, 61, 0.2);
   backdrop-filter: blur(16px);
-  animation: support-widget-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html.dark .working-hours-panel {
@@ -3408,31 +3407,8 @@ html.dark .working-hours-status.is-open .working-hours-dot {
 
 @media (min-width: 900px) {
   .working-hours-panel {
-    left: 0.85rem;
-    bottom: 1rem;
-    width: 12.8rem;
-  }
-}
-
-@media (max-width: 899px) {
-  .has-sidebar .page-shell,
-  .has-sidebar .home-hero-shell {
-    padding-bottom: 8.75rem;
-  }
-
-  .working-hours-panel {
-    left: 0.75rem;
-    bottom: 0.75rem;
-  }
-}
-
-@media (max-width: 639px) {
-  .site-body:has(.support-widget) .working-hours-panel {
-    bottom: 5.75rem;
-  }
-
-  .site-body:has(.support-widget-window) .working-hours-panel {
-    display: none;
+    position: sticky;
+    bottom: 0.35rem;
   }
 }
 

@@ -11,13 +11,17 @@ import {
 import { createPortal } from "react-dom";
 import { FormBanner } from "@/components/form-banner";
 import {
+  closeSupportConversation,
   getSupportWsToken,
+  listSupportConversations,
   listSupportMessages,
   markSupportConversationRead,
   openSupportConversation,
+  reopenSupportConversation,
 } from "@/lib/support/client";
 import { buildSupportWsUrl } from "@/lib/support/ws-url";
 import type {
+  ConversationStatus,
   SupportMessageRead,
   SupportWsClientEvent,
   SupportWsServerEvent,
@@ -104,12 +108,14 @@ function getWidgetHost(): HTMLElement {
 
 export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [status, setStatus] = useState<ConversationStatus>("open");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [sending, setSending] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const mounted = useSyncExternalStore(
     subscribeNoop,
@@ -153,10 +159,16 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
       setLoading(true);
       setError(null);
       try {
-        const conversation = await openSupportConversation(tuningRequestId);
+        const existing = await listSupportConversations(tuningRequestId);
         if (cancelled) return;
 
+        const conversation = existing[0];
+        if (!conversation) {
+          return;
+        }
+
         setConversationId(conversation.id);
+        setStatus(conversation.status);
         const history = await listSupportMessages(conversation.id, { limit: 50 });
         if (cancelled) return;
 
@@ -250,6 +262,11 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
             return;
           }
 
+          if (payload.type === "conversation.updated") {
+            setStatus(payload.data.status);
+            return;
+          }
+
           if (payload.type === "error") {
             setError(payload.data.detail ?? "Chat error.");
           }
@@ -283,7 +300,7 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
 
   const sendMessage = useCallback(async () => {
     const content = draft.trim();
-    if (!content || !conversationId || sending) return;
+    if (!content || !conversationId || sending || status === "closed") return;
 
     const clientMessageId = crypto.randomUUID();
     const optimistic: ChatMessage = {
@@ -327,13 +344,78 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
     } finally {
       setSending(false);
     }
-  }, [conversationId, currentUserId, draft, sending]);
+  }, [conversationId, currentUserId, draft, sending, status]);
+
+  const conversationClosed = status === "closed";
 
   const connectionLabel = useMemo(() => {
     if (loading) return "Loading chat…";
+    if (conversationClosed) return "Closed";
     if (connected) return "Connected";
     return "Reconnecting…";
-  }, [connected, loading]);
+  }, [connected, conversationClosed, loading]);
+
+  const handleOpen = useCallback(async () => {
+    setIsOpen(true);
+    setError(null);
+
+    if (!conversationId) {
+      setLoading(true);
+      try {
+        const conversation = await openSupportConversation(tuningRequestId);
+        setConversationId(conversation.id);
+        setStatus(conversation.status);
+        const history = await listSupportMessages(conversation.id, { limit: 50 });
+        setMessages(sortMessages(history));
+        await markRead(conversation.id);
+      } catch (openError) {
+        setError(
+          openError instanceof Error
+            ? openError.message
+            : "Could not open support chat.",
+        );
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (status !== "closed") return;
+
+    try {
+      const conversation = await reopenSupportConversation(conversationId);
+      setStatus(conversation.status);
+    } catch (reopenError) {
+      setError(
+        reopenError instanceof Error
+          ? reopenError.message
+          : "Could not reopen support chat.",
+      );
+    }
+  }, [conversationId, markRead, status, tuningRequestId]);
+
+  const handleClose = useCallback(async () => {
+    if (!conversationId || status === "closed") {
+      setIsOpen(false);
+      return;
+    }
+
+    setClosing(true);
+    setError(null);
+    try {
+      const conversation = await closeSupportConversation(conversationId);
+      setStatus(conversation.status);
+      setIsOpen(false);
+    } catch (closeError) {
+      setError(
+        closeError instanceof Error
+          ? closeError.message
+          : "Could not close support chat.",
+      );
+    } finally {
+      setClosing(false);
+    }
+  }, [conversationId, status]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -353,14 +435,15 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
             </div>
             <div className="support-widget-header-actions">
               <p
-                className={`support-chat-status${connected ? " is-live" : ""}`}
+                className={`support-chat-status${connected && !conversationClosed ? " is-live" : ""}`}
               >
                 {connectionLabel}
               </p>
               <button
                 type="button"
                 className="support-widget-close"
-                onClick={() => setIsOpen(false)}
+                onClick={() => void handleClose()}
+                disabled={closing || loading}
                 aria-label="Close support chat"
               >
                 ×
@@ -414,7 +497,7 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
               maxLength={4000}
               placeholder="Write your message…"
               value={draft}
-              disabled={loading || !conversationId}
+              disabled={loading || !conversationId || conversationClosed}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -426,7 +509,13 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
             <button
               type="submit"
               className="support-chat-send"
-              disabled={loading || !conversationId || sending || !draft.trim()}
+              disabled={
+                loading ||
+                !conversationId ||
+                sending ||
+                conversationClosed ||
+                !draft.trim()
+              }
             >
               Send
             </button>
@@ -436,7 +525,7 @@ export function SupportChat({ tuningRequestId, currentUserId }: SupportChatProps
         <button
           type="button"
           className="support-widget-teaser"
-          onClick={() => setIsOpen(true)}
+          onClick={() => void handleOpen()}
         >
           <span className="support-widget-teaser-icon">
             <ChatIcon />

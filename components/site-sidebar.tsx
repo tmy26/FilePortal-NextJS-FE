@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { WorkingHoursPanel } from "@/components/working-hours-panel";
 import { SIGNED_IN_NAV_LINKS } from "@/lib/nav";
 
 type SiteSidebarProps = {
@@ -67,6 +68,7 @@ export function SiteSidebar({ open, onClose }: SiteSidebarProps) {
             );
           })}
         </nav>
+        <WorkingHoursPanel />
       </aside>
     </>
   );
